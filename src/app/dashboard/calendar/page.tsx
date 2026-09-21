@@ -47,7 +47,7 @@ function toDateKey(d: Date): string {
 
 export default function CalendarPage() {
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
 
   const [repairs, setRepairs] = useState<RepairTicket[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
@@ -59,6 +59,9 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<string>(() => toDateKey(new Date()));
   const [viewMode, setViewMode] = useState<'month' | 'agenda'>('month');
   const [filterType, setFilterType] = useState<'ALL' | 'CRITICAL' | 'REPAIRS' | 'PPM' | 'COMPLETED'>('ALL');
+
+  // Senior Mechanic & Admin have authority to schedule new PPM overhauls
+  const canSchedulePPM = role === 'SENIOR_MECHANIC' || role === 'ADMIN' || role === 'ASSET_MANAGER';
 
   // Resolve Repair modal state
   const [isResolveOpen, setIsResolveOpen] = useState(false);
@@ -471,15 +474,17 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          {/* Quick Schedule Button & View Mode Controls */}
+          {/* Quick Schedule Button (Senior Mechanic & Plant Admin only) */}
           <div className="flex items-center flex-wrap gap-2.5">
-            <button
-              onClick={() => setIsSchedulePPMOpen(true)}
-              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-indigo-600/25 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Schedule PPM Task</span>
-            </button>
+            {canSchedulePPM && (
+              <button
+                onClick={() => setIsSchedulePPMOpen(true)}
+                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-indigo-600/25 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Schedule PPM Task</span>
+              </button>
+            )}
 
             {/* View Mode Toggle (Month vs Agenda) */}
             <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs font-semibold text-slate-600">
@@ -829,13 +834,15 @@ export default function CalendarPage() {
                     <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
                       All sewing machinery on active lines are functioning without pending breakdowns or PPM tasks on this day.
                     </p>
-                    <button
-                      onClick={() => setIsSchedulePPMOpen(true)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Schedule PPM on this Day</span>
-                    </button>
+                    {canSchedulePPM && (
+                      <button
+                        onClick={() => setIsSchedulePPMOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Schedule PPM on this Day</span>
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <>

@@ -52,6 +52,9 @@ export default function InventoryPage() {
   const { showToast } = useToast();
   const { user, role } = useAuth();
 
+  const isStorePersonOrAdmin = role === 'STORE_PERSON' || role === 'ADMIN' || role === 'ASSET_MANAGER';
+  const isMechanicOrAdmin = role === 'MECHANIC' || role === 'SENIOR_MECHANIC' || role === 'ADMIN' || role === 'ASSET_MANAGER';
+
   const [parts, setParts] = useState<SparePart[]>([]);
   const [requisitions, setRequisitions] = useState<PartRequisition[]>([]);
 
@@ -445,44 +448,58 @@ export default function InventoryPage() {
 
         {/* Action Buttons: Critical vs Urgent vs Monthly Indent */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* 1. Critical Need (CEO Permission) */}
-          <button
-            onClick={() => handleOpenReqModal('CRITICAL_CEO')}
-            className="text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm cursor-pointer urgent-pulse"
-            title="Line Stoppage / Emergency Stoppage requiring CEO Approval"
-          >
-            <ShieldAlert className="w-4 h-4 text-white" />
-            <span>🚨 Critical Need (CEO Permission)</span>
-          </button>
+          {/* Mechanic & Admin Actions: Critical vs Urgent vs Monthly Indent */}
+          {isMechanicOrAdmin && (
+            <>
+              {/* 1. Critical Need (CEO Permission) */}
+              <button
+                onClick={() => handleOpenReqModal('CRITICAL_CEO')}
+                className="text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm cursor-pointer urgent-pulse"
+                title="Line Stoppage / Emergency Stoppage requiring CEO Approval"
+              >
+                <ShieldAlert className="w-4 h-4 text-white" />
+                <span>🚨 Critical Need (CEO Permission)</span>
+              </button>
 
-          {/* 2. Urgent Need (Manager Fast-Track) */}
-          <button
-            onClick={() => handleOpenReqModal('URGENT_NEED')}
-            className="text-xs font-bold text-amber-900 bg-amber-400 hover:bg-amber-500 active:bg-amber-600 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-            title="Fast-Track Urgent Shift Requirement (Maintenance Manager Approval)"
-          >
-            <Zap className="w-4 h-4 text-amber-950" />
-            <span>⚡ Urgent Need (Manager)</span>
-          </button>
+              {/* 2. Urgent Need (Manager Fast-Track) */}
+              <button
+                onClick={() => handleOpenReqModal('URGENT_NEED')}
+                className="text-xs font-bold text-amber-900 bg-amber-400 hover:bg-amber-500 active:bg-amber-600 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                title="Fast-Track Urgent Shift Requirement (Maintenance Manager Approval)"
+              >
+                <Zap className="w-4 h-4 text-amber-950" />
+                <span>⚡ Urgent Need (Manager)</span>
+              </button>
 
-          {/* 3. Monthly Indent (Part List) */}
-          <button
-            onClick={() => handleOpenReqModal('MONTHLY_INDENT')}
-            className="text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-            title="Create Multi-Part Monthly Indent Order List"
-          >
-            <ListPlus className="w-4 h-4 text-indigo-600" />
-            <span>📦 Monthly Indent (Part List)</span>
-          </button>
+              {/* 3. Monthly Indent (Part List) */}
+              <button
+                onClick={() => handleOpenReqModal('MONTHLY_INDENT')}
+                className="text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                title="Create Multi-Part Monthly Indent Order List"
+              >
+                <ListPlus className="w-4 h-4 text-indigo-600" />
+                <span>📦 Monthly Indent (Part List)</span>
+              </button>
+            </>
+          )}
 
-          {/* 4. Restock Intake */}
-          <button
-            onClick={() => setIsRestockOpen(true)}
-            className="text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-          >
-            <PackageOpen className="w-4 h-4 text-slate-600" />
-            <span>Restock</span>
-          </button>
+          {/* Store Person & Admin Action: Restock Intake */}
+          {isStorePersonOrAdmin && (
+            <button
+              onClick={() => setIsRestockOpen(true)}
+              className="text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <PackageOpen className="w-4 h-4 text-emerald-600" />
+              <span>Restock Tool Crib</span>
+            </button>
+          )}
+
+          {/* CEO View Indicator */}
+          {role === 'CEO' && (
+            <span className="text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+              👑 Executive Inventory & Valuation Audit
+            </span>
+          )}
         </div>
       </div>
 

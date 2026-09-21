@@ -38,6 +38,8 @@ export default function CeoMessagesPage() {
   const [broadcastText, setBroadcastText] = useState('');
   const [broadcastSent, setBroadcastSent] = useState(false);
 
+  const isCeoOrAdmin = role === 'CEO' || role === 'ADMIN' || role === 'ASSET_MANAGER';
+
   useEffect(() => {
     const unsub = subscribeRequisitions((reqs) => {
       // Filter for requisitions requiring CEO approval or marked as critical
@@ -152,6 +154,20 @@ export default function CeoMessagesPage() {
           </div>
         </div>
       </div>
+
+      {/* Role Authority Advisory Banner */}
+      {!isCeoOrAdmin && (
+        <div className="bg-amber-50 border border-amber-300 p-4 rounded-2xl flex items-center justify-between text-xs text-amber-900 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-200 text-amber-800 flex items-center justify-center font-bold shrink-0">
+              <Crown className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-bold">Executive Authority Restricted:</span> You are viewing the CEO Approval Desk in read-only mode as <span className="font-mono font-bold uppercase">{role || 'GUEST'}</span>. Only <strong>CEO Dr. K. Ramanathan</strong> or <strong>Plant Admin</strong> has authority to approve or decline critical capital spare orders.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPI Stats Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -389,16 +405,28 @@ export default function CeoMessagesPage() {
 
                         <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
                           <button
+                            disabled={!isCeoOrAdmin}
                             onClick={() => handleApprove(req.id)}
-                            className="w-full sm:flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center justify-center gap-1.5"
+                            className={`w-full sm:flex-1 py-2.5 text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center justify-center gap-1.5 ${
+                              isCeoOrAdmin
+                                ? 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 cursor-pointer'
+                                : 'bg-slate-400 cursor-not-allowed opacity-60'
+                            }`}
                           >
                             <CheckCircle2 className="w-4 h-4" />
-                            <span>Grant CEO Executive Approval</span>
+                            <span>
+                              {isCeoOrAdmin ? 'Grant CEO Executive Approval' : 'Requires CEO Signature'}
+                            </span>
                           </button>
 
                           <button
+                            disabled={!isCeoOrAdmin}
                             onClick={() => handleReject(req.id)}
-                            className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-300 hover:border-rose-300 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-1.5"
+                            className={`w-full sm:w-auto px-4 py-2.5 border text-xs font-semibold rounded-xl transition flex items-center justify-center gap-1.5 ${
+                              isCeoOrAdmin
+                                ? 'bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border-slate-300 hover:border-rose-300 cursor-pointer'
+                                : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
+                            }`}
                           >
                             <XCircle className="w-4 h-4" />
                             <span>Decline / Defer</span>

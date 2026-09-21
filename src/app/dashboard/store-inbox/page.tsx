@@ -39,6 +39,8 @@ export default function StoreInboxPage() {
   const [notes, setNotes] = useState('');
   const [challanNo, setChallanNo] = useState('');
 
+  const isStorePersonOrAdmin = role === 'STORE_PERSON' || role === 'ADMIN' || role === 'ASSET_MANAGER';
+
   useEffect(() => {
     const unsubReqs = subscribeRequisitions((reqs) => {
       // Filter strictly for monthly indents assigned to the store person
@@ -144,6 +146,20 @@ export default function StoreInboxPage() {
           </div>
         </div>
       </div>
+
+      {/* Role Authority Advisory Banner */}
+      {!isStorePersonOrAdmin && (
+        <div className="bg-blue-50 border border-blue-300 p-4 rounded-2xl flex items-center justify-between text-xs text-blue-900 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-200 text-blue-800 flex items-center justify-center font-bold shrink-0">
+              <Package className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-bold">Store Person Custody Only:</span> You are viewing the Monthly Store Indents in read-only mode as <span className="font-mono font-bold uppercase">{role || 'GUEST'}</span>. Only <strong>Store Person M. Arumugam</strong> or <strong>Plant Admin</strong> has authority to receive inward stock and dispatch parts to sewing lines.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Grid: Store Inbox Orders & Crib Current Stock Shelf */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -332,25 +348,34 @@ export default function StoreInboxPage() {
 
                     {/* Store Keeper Actions */}
                     <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2">
-                      {!isOrdered && !isFulfilled && (
-                        <button
-                          onClick={() => openActionModal(req, 'RECEIVE')}
-                          className="py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5"
-                        >
-                          <Truck className="w-4 h-4" />
-                          <span>Receive Inward Delivery into Crib</span>
-                        </button>
-                      )}
+                      {isStorePersonOrAdmin ? (
+                        <>
+                          {!isOrdered && !isFulfilled && (
+                            <button
+                              onClick={() => openActionModal(req, 'RECEIVE')}
+                              className="py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Truck className="w-4 h-4" />
+                              <span>Receive Inward Delivery into Crib</span>
+                            </button>
+                          )}
 
-                      {!isFulfilled && (
-                        <button
-                          onClick={() => openActionModal(req, 'DISPATCH')}
-                          className="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5"
-                        >
-                          <ArrowRight className="w-4 h-4" />
-                          <span>Dispatch Quota to Sewing Lines</span>
-                        </button>
-                      )}
+                          {!isFulfilled && (
+                            <button
+                              onClick={() => openActionModal(req, 'DISPATCH')}
+                              className="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <ArrowRight className="w-4 h-4" />
+                              <span>Dispatch Quota to Sewing Lines</span>
+                            </button>
+                          )}
+                        </>
+                      ) : !isFulfilled ? (
+                        <div className="text-xs text-slate-500 font-medium bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5">
+                          <Package className="w-4 h-4 text-slate-400" />
+                          <span>Fulfillment requires Store Person (M. Arumugam)</span>
+                        </div>
+                      ) : null}
 
                       {isFulfilled && (
                         <div className="text-xs text-emerald-700 font-bold flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">

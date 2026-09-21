@@ -146,66 +146,151 @@ export function Navbar() {
     highlight?: boolean;
   }
 
-  // Dynamic tabs tailored to current role
-  const baseTabs: NavTab[] = [
-    {
-      label: '1. Machine Entry & QR',
-      href: '/dashboard/machines',
-      icon: QrCode,
-    },
-    {
-      label: '2. Spare Parts Crib',
-      href: '/dashboard/inventory',
-      icon: Boxes,
-      badge: lowStockCount > 0 ? lowStockCount : null,
-      badgeColor: 'bg-rose-500 text-white',
-    },
-    {
-      label: '3. Machine History & PPM',
-      href: '/dashboard/history',
-      icon: History,
-    },
-    {
-      label: '4. Mechanic Calendar',
-      href: '/dashboard/calendar',
-      icon: CalendarCheck,
-      badge: pendingTicketsCount > 0 ? pendingTicketsCount : null,
-      badgeColor: 'bg-amber-400 text-slate-950 font-extrabold',
-    },
-    {
-      label: '5. Asset Floor Grid',
-      href: '/dashboard/floor-tracker',
-      icon: Layers,
-    },
-  ];
+  // Define role-specific navigation tabs strictly matching the mandatory responsibility matrix
+  const isMechanicOrAdmin =
+    role === 'MECHANIC' || role === 'SENIOR_MECHANIC' || role === 'ADMIN' || role === 'ASSET_MANAGER';
 
-  // Specific role-highlighted tabs
-  const ceoTab: NavTab = {
-    label: 'Critical Messages (CEO)',
-    href: '/dashboard/messages',
-    icon: Crown,
-    badge: pendingCeoCount > 0 ? pendingCeoCount : null,
-    badgeColor: 'bg-rose-600 text-white animate-pulse',
-    highlight: true,
-  };
+  let navTabs: NavTab[] = [];
 
-  const storeTab: NavTab = {
-    label: 'Monthly Store Indents',
-    href: '/dashboard/store-inbox',
-    icon: Package,
-    badge: pendingStoreCount > 0 ? pendingStoreCount : null,
-    badgeColor: 'bg-emerald-500 text-white',
-    highlight: true,
-  };
-
-  // Compose navigation list based on user persona
-  let navTabs: NavTab[] = [...baseTabs];
   if (role === 'CEO') {
-    navTabs = [ceoTab, storeTab, ...baseTabs];
+    // 👑 CEO: Executive approval desk, factory history/downtime ledger, and machine fleet overview
+    navTabs = [
+      {
+        label: '👑 Critical Approvals (CEO)',
+        href: '/dashboard/messages',
+        icon: Crown,
+        badge: pendingCeoCount > 0 ? pendingCeoCount : null,
+        badgeColor: 'bg-rose-600 text-white animate-pulse',
+        highlight: true,
+      },
+      {
+        label: 'Plant History & Downtime Ledger',
+        href: '/dashboard/history',
+        icon: History,
+      },
+      {
+        label: 'Factory Machine Fleet',
+        href: '/dashboard/machines',
+        icon: QrCode,
+      },
+    ];
   } else if (role === 'STORE_PERSON') {
-    navTabs = [storeTab, ...baseTabs, ceoTab];
+    // 📦 STORE PERSON: Monthly indents receiver and tool crib inventory custodian
+    navTabs = [
+      {
+        label: '📦 Monthly Store Indents',
+        href: '/dashboard/store-inbox',
+        icon: Package,
+        badge: pendingStoreCount > 0 ? pendingStoreCount : null,
+        badgeColor: 'bg-emerald-500 text-white',
+        highlight: true,
+      },
+      {
+        label: 'Tool Crib Inventory',
+        href: '/dashboard/inventory',
+        icon: Boxes,
+        badge: lowStockCount > 0 ? lowStockCount : null,
+        badgeColor: 'bg-rose-500 text-white',
+      },
+    ];
+  } else if (role === 'MECHANIC') {
+    // 🦺 LINE MECHANIC: Monthly work calendar, attend & fix, and spare parts/indents request
+    navTabs = [
+      {
+        label: '📅 Mechanic Work Calendar',
+        href: '/dashboard/calendar',
+        icon: CalendarCheck,
+        badge: pendingTicketsCount > 0 ? pendingTicketsCount : null,
+        badgeColor: 'bg-amber-400 text-slate-950 font-extrabold',
+        highlight: true,
+      },
+      {
+        label: 'Tool Crib & Monthly Indents',
+        href: '/dashboard/inventory',
+        icon: Boxes,
+      },
+    ];
+  } else if (role === 'SENIOR_MECHANIC') {
+    // 🔧 SENIOR MECHANIC: Monthly cloud calendar (PPM), machine relocation, parts, history, floor grid
+    navTabs = [
+      {
+        label: '📅 Monthly Calendar & PPM',
+        href: '/dashboard/calendar',
+        icon: CalendarCheck,
+        badge: pendingTicketsCount > 0 ? pendingTicketsCount : null,
+        badgeColor: 'bg-amber-400 text-slate-950 font-extrabold',
+        highlight: true,
+      },
+      {
+        label: 'Machine Fleet & Relocation',
+        href: '/dashboard/machines',
+        icon: QrCode,
+      },
+      {
+        label: 'Tool Crib & Indents',
+        href: '/dashboard/inventory',
+        icon: Boxes,
+        badge: lowStockCount > 0 ? lowStockCount : null,
+        badgeColor: 'bg-rose-500 text-white',
+      },
+      {
+        label: 'Machine History & PPM',
+        href: '/dashboard/history',
+        icon: History,
+      },
+      {
+        label: 'Floor Grid',
+        href: '/dashboard/floor-tracker',
+        icon: Layers,
+      },
+    ];
   } else {
-    navTabs = [ceoTab, storeTab, ...baseTabs];
+    // 🛡️ PLANT ADMIN / ASSET MANAGER: Master oversight across all 7 operational modules
+    navTabs = [
+      {
+        label: '1. Machine Entry & QR',
+        href: '/dashboard/machines',
+        icon: QrCode,
+      },
+      {
+        label: '2. Spare Parts Crib',
+        href: '/dashboard/inventory',
+        icon: Boxes,
+        badge: lowStockCount > 0 ? lowStockCount : null,
+        badgeColor: 'bg-rose-500 text-white',
+      },
+      {
+        label: '3. Machine History & PPM',
+        href: '/dashboard/history',
+        icon: History,
+      },
+      {
+        label: '4. Mechanic Calendar',
+        href: '/dashboard/calendar',
+        icon: CalendarCheck,
+        badge: pendingTicketsCount > 0 ? pendingTicketsCount : null,
+        badgeColor: 'bg-amber-400 text-slate-950 font-extrabold',
+      },
+      {
+        label: '5. Asset Floor Grid',
+        href: '/dashboard/floor-tracker',
+        icon: Layers,
+      },
+      {
+        label: '👑 CEO Approvals',
+        href: '/dashboard/messages',
+        icon: Crown,
+        badge: pendingCeoCount > 0 ? pendingCeoCount : null,
+        badgeColor: 'bg-rose-600 text-white',
+      },
+      {
+        label: '📦 Store Indents',
+        href: '/dashboard/store-inbox',
+        icon: Package,
+        badge: pendingStoreCount > 0 ? pendingStoreCount : null,
+        badgeColor: 'bg-emerald-500 text-white',
+      },
+    ];
   }
 
   // Get color for role badge
@@ -269,24 +354,29 @@ export function Navbar() {
               {/* Live Floor Clock */}
               <LiveClock />
 
-              {/* Camera Scanner Trigger */}
-              <button
-                onClick={() => setIsCameraModalOpen(true)}
-                className="hidden sm:flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-700 transition"
-                title="Scan QR Tag using Camera"
-              >
-                <Camera className="w-3.5 h-3.5 text-indigo-400" />
-                <span className="hidden md:inline">Camera</span>
-              </button>
+              {/* Floor QR Scanning Actions (Only visible for Mechanics and Plant Admin) */}
+              {isMechanicOrAdmin && (
+                <>
+                  {/* Camera Scanner Trigger */}
+                  <button
+                    onClick={() => setIsCameraModalOpen(true)}
+                    className="hidden sm:flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-700 transition"
+                    title="Scan QR Tag using Camera"
+                  >
+                    <Camera className="w-3.5 h-3.5 text-indigo-400" />
+                    <span className="hidden md:inline">Camera</span>
+                  </button>
 
-              {/* Simulate QR Scan Floor Action */}
-              <button
-                onClick={() => setIsScanModalOpen(true)}
-                className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm transition active:scale-95"
-              >
-                <QrCode className="w-3.5 h-3.5" />
-                <span>Simulate Scan</span>
-              </button>
+                  {/* Simulate QR Scan Floor Action */}
+                  <button
+                    onClick={() => setIsScanModalOpen(true)}
+                    className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm transition active:scale-95"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>Scan Tag</span>
+                  </button>
+                </>
+              )}
 
               {/* User Profile & Role Switcher Popover */}
               <div className="relative">
