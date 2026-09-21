@@ -104,7 +104,13 @@ export interface PPMSchedule {
   status: PPMStatus;
 }
 
-export type UserRole = 'MECHANIC' | 'ASSET_MANAGER';
+export type UserRole =
+  | 'CEO'
+  | 'ADMIN'
+  | 'SENIOR_MECHANIC'
+  | 'MECHANIC'
+  | 'STORE_PERSON'
+  | 'ASSET_MANAGER';
 
 export interface UserProfile {
   uid: string;
@@ -162,6 +168,10 @@ export interface PartRequisition {
   reviewedBy?: string;
   reviewedAt?: string;
   reviewNotes?: string;
+  // Store Person receipt and fulfillment tracking
+  assignedStorePerson?: string; // e.g. "M. Arumugam (Stores In-Charge)"
+  fulfilledAt?: string;
+  storeNotes?: string;
 }
 
 

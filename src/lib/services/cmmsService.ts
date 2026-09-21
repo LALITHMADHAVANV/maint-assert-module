@@ -15,6 +15,7 @@ import {
   PPMSchedule,
   FloorLine,
   PartRequisition,
+  RequisitionStatus,
 } from '@/types/cmms';
 import {
   SEED_MACHINES,
@@ -779,6 +780,80 @@ export async function rejectRequisition(
       });
     } catch (err) {
       console.error('Firestore rejectRequisition error:', err);
+    }
+  }
+}
+
+export async function fulfillMonthlyIndent(
+  id: string,
+  storePersonName: string = 'M. Arumugam (Stores In-Charge)',
+  storeNotes: string = 'Inward shipment received into crib and verified against QC pass',
+  actionType: 'RECEIVE_INTO_CRIB' | 'DISPATCH_TO_LINE' = 'RECEIVE_INTO_CRIB'
+): Promise<void> {
+  const currentReqs = getLocal<PartRequisition[]>(
+    STORAGE_KEYS.REQUISITIONS,
+    SEED_REQUISITIONS
+  );
+
+  const targetReq = currentReqs.find((r) => r.id === id);
+  if (!targetReq) return;
+
+  const newStatus = actionType === 'DISPATCH_TO_LINE' ? 'FULFILLED' : 'ORDERED';
+
+  const updatedReqs = currentReqs.map((r) =>
+    r.id === id
+      ? {
+          ...r,
+          status: newStatus as RequisitionStatus,
+          assignedStorePerson: storePersonName,
+          fulfilledAt: new Date().toISOString(),
+          storeNotes,
+        }
+      : r
+  );
+
+  setLocal(STORAGE_KEYS.REQUISITIONS, updatedReqs);
+  notifyLocal('requisitions', updatedReqs);
+
+  // If receiving into crib, update part stocks for each item in the indent
+  if (actionType === 'RECEIVE_INTO_CRIB' && targetReq.items && targetReq.items.length > 0) {
+    const currentParts = getLocal<SparePart[]>(STORAGE_KEYS.PARTS, SEED_PARTS);
+    const updatedParts = currentParts.map((p) => {
+      const match = targetReq.items?.find((item) => item.partId === p.partId);
+      if (match) {
+        return { ...p, stock: p.stock + match.quantity };
+      }
+      return p;
+    });
+    setLocal(STORAGE_KEYS.PARTS, updatedParts);
+    notifyLocal('parts', updatedParts);
+
+    if (isFirebaseConfigured) {
+      try {
+        for (const item of targetReq.items) {
+          const partDoc = currentParts.find((p) => p.partId === item.partId);
+          if (partDoc) {
+            await updateDoc(doc(db, 'parts', item.partId), {
+              stock: partDoc.stock + item.quantity,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Firestore stock intake warning:', err);
+      }
+    }
+  }
+
+  if (isFirebaseConfigured) {
+    try {
+      await updateDoc(doc(db, 'requisitions', id), {
+        status: newStatus,
+        assignedStorePerson: storePersonName,
+        fulfilledAt: new Date().toISOString(),
+        storeNotes,
+      });
+    } catch (err) {
+      console.error('Firestore fulfillMonthlyIndent error:', err);
     }
   }
 }

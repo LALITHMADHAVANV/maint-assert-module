@@ -16,13 +16,25 @@ import {
   Camera,
   RefreshCw,
   UserCheck,
+  Crown,
+  Package,
+  ShieldCheck,
+  HardHat,
+  MessageSquare,
+  ChevronDown,
 } from 'lucide-react';
 import { LiveClock } from './LiveClock';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
-import { subscribeParts, subscribeRepairs, resetToSeedData } from '@/lib/services/cmmsService';
+import {
+  subscribeParts,
+  subscribeRepairs,
+  subscribeRequisitions,
+  resetToSeedData,
+} from '@/lib/services/cmmsService';
 import { ScanModal } from '@/components/scan/ScanModal';
 import { CameraScannerModal } from '@/components/scan/CameraScannerModal';
+import { UserRole } from '@/types/cmms';
 
 export function Navbar() {
   const pathname = usePathname();
@@ -32,9 +44,12 @@ export function Navbar() {
 
   const [lowStockCount, setLowStockCount] = useState<number>(0);
   const [pendingTicketsCount, setPendingTicketsCount] = useState<number>(0);
+  const [pendingCeoCount, setPendingCeoCount] = useState<number>(0);
+  const [pendingStoreCount, setPendingStoreCount] = useState<number>(0);
 
   const [isScanModalOpen, setIsScanModalOpen] = useState<boolean>(false);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState<boolean>(false);
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState<boolean>(false);
   const [isSeeding, setIsSeeding] = useState<boolean>(false);
 
   useEffect(() => {
@@ -48,9 +63,24 @@ export function Navbar() {
       setPendingTicketsCount(pending);
     });
 
+    const unsubReqs = subscribeRequisitions((reqs) => {
+      const ceoPending = reqs.filter(
+        (r) =>
+          (r.type === 'CRITICAL_CEO' || r.requiresCeoApproval) &&
+          r.status === 'PENDING_CEO_APPROVAL'
+      ).length;
+      setPendingCeoCount(ceoPending);
+
+      const storePending = reqs.filter(
+        (r) => r.type === 'MONTHLY_INDENT' && r.status !== 'FULFILLED'
+      ).length;
+      setPendingStoreCount(storePending);
+    });
+
     return () => {
       unsubParts();
       unsubRepairs();
+      unsubReqs();
     };
   }, []);
 
@@ -58,7 +88,7 @@ export function Navbar() {
     setIsSeeding(true);
     try {
       await resetToSeedData();
-      showToast('Factory database reset to realistic apparel seed dataset!', 'success');
+      showToast('Factory database reset to realistic apparel seed dataset across all collections!', 'success');
     } catch (e) {
       showToast('Error resetting seed data', 'error');
       console.error(e);
@@ -67,7 +97,52 @@ export function Navbar() {
     }
   };
 
-  const navTabs = [
+  const handleSwitchRole = (newRole: UserRole) => {
+    loginAsRole(newRole);
+    setIsRoleDropdownOpen(false);
+
+    let targetRoute = '/dashboard/machines';
+    let label = 'Staff';
+
+    switch (newRole) {
+      case 'CEO':
+        label = 'CEO (Dr. K. Ramanathan)';
+        targetRoute = '/dashboard/messages';
+        break;
+      case 'ADMIN':
+      case 'ASSET_MANAGER':
+        label = 'Plant Admin (V. Sundaram)';
+        targetRoute = '/dashboard/machines';
+        break;
+      case 'SENIOR_MECHANIC':
+        label = 'Senior Master Mechanic (Ramesh Kumar)';
+        targetRoute = '/dashboard/calendar';
+        break;
+      case 'MECHANIC':
+        label = 'Line Mechanic (Suresh Babu)';
+        targetRoute = '/dashboard/calendar';
+        break;
+      case 'STORE_PERSON':
+        label = 'Store Person (M. Arumugam)';
+        targetRoute = '/dashboard/store-inbox';
+        break;
+    }
+
+    showToast(`Switched active persona to ${label}`, 'info');
+    router.push(targetRoute);
+  };
+
+  interface NavTab {
+    label: string;
+    href: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badge?: number | null;
+    badgeColor?: string;
+    highlight?: boolean;
+  }
+
+  // Dynamic tabs tailored to current role
+  const baseTabs: NavTab[] = [
     {
       label: '1. Machine Entry & QR',
       href: '/dashboard/machines',
@@ -93,15 +168,63 @@ export function Navbar() {
       badgeColor: 'bg-amber-400 text-slate-950 font-extrabold',
     },
     {
-      label: '5. Asset Management & Floor',
+      label: '5. Asset Floor Grid',
       href: '/dashboard/floor-tracker',
       icon: Layers,
     },
   ];
 
+  // Specific role-highlighted tabs
+  const ceoTab: NavTab = {
+    label: 'Critical Messages (CEO)',
+    href: '/dashboard/messages',
+    icon: Crown,
+    badge: pendingCeoCount > 0 ? pendingCeoCount : null,
+    badgeColor: 'bg-rose-600 text-white animate-pulse',
+    highlight: true,
+  };
+
+  const storeTab: NavTab = {
+    label: 'Monthly Store Indents',
+    href: '/dashboard/store-inbox',
+    icon: Package,
+    badge: pendingStoreCount > 0 ? pendingStoreCount : null,
+    badgeColor: 'bg-emerald-500 text-white',
+    highlight: true,
+  };
+
+  // Compose navigation list based on user persona
+  let navTabs: NavTab[] = [...baseTabs];
+  if (role === 'CEO') {
+    navTabs = [ceoTab, storeTab, ...baseTabs];
+  } else if (role === 'STORE_PERSON') {
+    navTabs = [storeTab, ...baseTabs, ceoTab];
+  } else {
+    navTabs = [ceoTab, storeTab, ...baseTabs];
+  }
+
+  // Get color for role badge
+  const getRoleBadgeColor = () => {
+    switch (role) {
+      case 'CEO':
+        return 'bg-purple-600 text-white';
+      case 'ADMIN':
+      case 'ASSET_MANAGER':
+        return 'bg-blue-600 text-white';
+      case 'SENIOR_MECHANIC':
+        return 'bg-indigo-600 text-white';
+      case 'MECHANIC':
+        return 'bg-amber-500 text-slate-950';
+      case 'STORE_PERSON':
+        return 'bg-emerald-600 text-white';
+      default:
+        return 'bg-slate-600 text-white';
+    }
+  };
+
   return (
     <>
-      <header className="bg-slate-900 text-white sticky top-0 z-30 shadow-md border-b border-slate-800 no-print">
+      <header className="bg-slate-950 text-white sticky top-0 z-30 shadow-md border-b border-slate-800 no-print">
         {/* Top brand & system toolbar */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -131,7 +254,7 @@ export function Navbar() {
               <div
                 onClick={handleResetSeed}
                 title="Click to reset or re-seed factory sample dataset"
-                className="hidden xl:flex items-center space-x-1.5 text-[11px] bg-slate-800/90 hover:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700 cursor-pointer text-slate-300 transition"
+                className="hidden xl:flex items-center space-x-1.5 text-[11px] bg-slate-900 hover:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700 cursor-pointer text-slate-300 transition"
               >
                 <span
                   className={`w-2 h-2 rounded-full ${
@@ -148,7 +271,7 @@ export function Navbar() {
               {/* Camera Scanner Trigger */}
               <button
                 onClick={() => setIsCameraModalOpen(true)}
-                className="hidden sm:flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-700 transition"
+                className="hidden sm:flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-700 transition"
                 title="Scan QR Tag using Camera"
               >
                 <Camera className="w-3.5 h-3.5 text-indigo-400" />
@@ -164,52 +287,157 @@ export function Navbar() {
                 <span>Simulate Scan</span>
               </button>
 
-              {/* User Profile & Role Switcher */}
-              <div className="flex items-center space-x-2 bg-slate-800 py-1 px-2.5 rounded-xl border border-slate-700">
-                <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold text-white uppercase shadow-sm">
-                  {user?.name?.charAt(0) || 'M'}
-                </div>
-                <div className="text-left hidden md:block">
-                  <div className="text-xs font-bold leading-tight">{user?.name || 'Ramesh Kumar'}</div>
-                  <div className="text-[10px] font-medium text-emerald-400 uppercase tracking-wider">
-                    {user?.title || 'Lead Mechanic'}
+              {/* User Profile & Role Switcher Popover */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+                  className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 py-1 px-2.5 rounded-xl border border-slate-700 transition text-left"
+                >
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold uppercase shadow-sm ${getRoleBadgeColor()}`}
+                  >
+                    {role === 'CEO' ? (
+                      <Crown className="w-3.5 h-3.5 text-amber-300" />
+                    ) : role === 'STORE_PERSON' ? (
+                      <Package className="w-3.5 h-3.5 text-white" />
+                    ) : (
+                      user?.name?.charAt(0) || 'M'
+                    )}
                   </div>
-                </div>
-
-                {/* Quick Role Toggle button */}
-                <button
-                  onClick={() => {
-                    const nextRole = role === 'MECHANIC' ? 'ASSET_MANAGER' : 'MECHANIC';
-                    loginAsRole(nextRole);
-                    showToast(
-                      `Switched role to ${nextRole === 'MECHANIC' ? 'Lead Mechanic' : 'Asset Manager'}`,
-                      'info'
-                    );
-                  }}
-                  title="Toggle Role Demo (Mechanic / Asset Manager)"
-                  className="p-1 text-slate-400 hover:text-indigo-300 transition ml-1"
-                >
-                  <UserCheck className="w-3.5 h-3.5" />
+                  <div className="hidden md:block">
+                    <div className="text-xs font-bold leading-tight flex items-center gap-1">
+                      <span>{user?.name || 'Dr. K. Ramanathan'}</span>
+                      <ChevronDown className="w-3 h-3 text-slate-400" />
+                    </div>
+                    <div className="text-[10px] font-bold tracking-wider uppercase text-slate-300">
+                      {role}
+                    </div>
+                  </div>
                 </button>
 
-                {/* Logout button */}
-                <button
-                  onClick={() => {
-                    logout();
-                    router.push('/');
-                  }}
-                  title="Sign Out to Login Portal"
-                  className="p-1 text-slate-400 hover:text-rose-400 transition"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
+                {/* Dropdown Menu for 5 Personas */}
+                {isRoleDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-64 bg-slate-900 rounded-2xl shadow-2xl border border-slate-700 p-2 z-50 animate-in fade-in zoom-in-95">
+                    <div className="px-3 py-2 border-b border-slate-800 mb-1">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Switch Persona
+                      </span>
+                    </div>
+
+                    <div className="space-y-1 text-xs">
+                      {/* CEO */}
+                      <button
+                        onClick={() => handleSwitchRole('CEO')}
+                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2.5 transition ${
+                          role === 'CEO'
+                            ? 'bg-purple-900/60 text-purple-200 font-bold border border-purple-700'
+                            : 'text-slate-300 hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-purple-600 text-amber-300 flex items-center justify-center">
+                          <Crown className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <div className="font-bold">Dr. K. Ramanathan</div>
+                          <div className="text-[10px] text-purple-400">Chief Executive Officer</div>
+                        </div>
+                      </button>
+
+                      {/* Admin */}
+                      <button
+                        onClick={() => handleSwitchRole('ADMIN')}
+                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2.5 transition ${
+                          role === 'ADMIN' || role === 'ASSET_MANAGER'
+                            ? 'bg-blue-900/60 text-blue-200 font-bold border border-blue-700'
+                            : 'text-slate-300 hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center">
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <div className="font-bold">V. Sundaram</div>
+                          <div className="text-[10px] text-blue-400">Plant Administrator</div>
+                        </div>
+                      </button>
+
+                      {/* Store Person */}
+                      <button
+                        onClick={() => handleSwitchRole('STORE_PERSON')}
+                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2.5 transition ${
+                          role === 'STORE_PERSON'
+                            ? 'bg-emerald-900/60 text-emerald-200 font-bold border border-emerald-700'
+                            : 'text-slate-300 hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
+                          <Package className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <div className="font-bold">M. Arumugam</div>
+                          <div className="text-[10px] text-emerald-400">Tool Crib Storekeeper</div>
+                        </div>
+                      </button>
+
+                      {/* Senior Mechanic */}
+                      <button
+                        onClick={() => handleSwitchRole('SENIOR_MECHANIC')}
+                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2.5 transition ${
+                          role === 'SENIOR_MECHANIC'
+                            ? 'bg-indigo-900/60 text-indigo-200 font-bold border border-indigo-700'
+                            : 'text-slate-300 hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center">
+                          <Wrench className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <div className="font-bold">Ramesh Kumar</div>
+                          <div className="text-[10px] text-indigo-400">Senior Master Mechanic</div>
+                        </div>
+                      </button>
+
+                      {/* Mechanic */}
+                      <button
+                        onClick={() => handleSwitchRole('MECHANIC')}
+                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2.5 transition ${
+                          role === 'MECHANIC'
+                            ? 'bg-amber-900/60 text-amber-200 font-bold border border-amber-700'
+                            : 'text-slate-300 hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center">
+                          <HardHat className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <div className="font-bold">Suresh Babu</div>
+                          <div className="text-[10px] text-amber-400">Line Sewing Mechanic</div>
+                        </div>
+                      </button>
+                    </div>
+
+                    <div className="pt-2 mt-2 border-t border-slate-800 flex items-center justify-between px-2">
+                      <button
+                        onClick={() => {
+                          setIsRoleDropdownOpen(false);
+                          logout();
+                          router.push('/');
+                        }}
+                        className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 py-1 font-semibold"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
 
         {/* Secondary Sub-Navbar Tabs */}
-        <nav className="bg-slate-800 border-t border-slate-700/60 overflow-x-auto">
+        <nav className="bg-slate-900 border-t border-slate-800/80 overflow-x-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex space-x-1 sm:space-x-2 py-1.5 whitespace-nowrap">
               {navTabs.map((tab) => {
@@ -223,7 +451,9 @@ export function Navbar() {
                     className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition flex items-center gap-2 ${
                       isActive
                         ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                        : tab.highlight
+                        ? 'text-purple-300 bg-purple-950/40 hover:bg-purple-900/50 border border-purple-800/40'
+                        : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />

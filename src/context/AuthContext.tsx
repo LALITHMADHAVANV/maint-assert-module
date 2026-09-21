@@ -69,7 +69,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginAsRole = (targetRole: UserRole) => {
     const targetUser =
       SEED_USERS.find((u) => u.role === targetRole) ||
-      (targetRole === 'MECHANIC' ? SEED_USERS[0] : SEED_USERS[1]);
+      (targetRole === 'CEO'
+        ? SEED_USERS[0]
+        : targetRole === 'ADMIN'
+        ? SEED_USERS[1]
+        : targetRole === 'SENIOR_MECHANIC'
+        ? SEED_USERS[2]
+        : targetRole === 'STORE_PERSON'
+        ? SEED_USERS[4]
+        : SEED_USERS[3]);
     setUser(targetUser);
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(targetUser));
   };
@@ -85,13 +93,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(found));
       } else {
         // Create demo user
-        const isMgr = email.toLowerCase().includes('mgr') || email.toLowerCase().includes('manager');
+        const isCeo = email.toLowerCase().includes('ceo');
+        const isAdmin = email.toLowerCase().includes('admin') || email.toLowerCase().includes('mgr');
+        const isStore = email.toLowerCase().includes('store');
+        const isSenior = email.toLowerCase().includes('senior');
+
+        const assignedRole: UserRole = isCeo
+          ? 'CEO'
+          : isAdmin
+          ? 'ADMIN'
+          : isStore
+          ? 'STORE_PERSON'
+          : isSenior
+          ? 'SENIOR_MECHANIC'
+          : 'MECHANIC';
+
         const customUser: UserProfile = {
           uid: `USR-${Date.now().toString().slice(-4)}`,
           name: email.split('@')[0],
           email,
-          role: isMgr ? 'ASSET_MANAGER' : 'MECHANIC',
-          title: isMgr ? 'Plant Asset Manager' : 'Sewing Floor Mechanic',
+          role: assignedRole,
+          title: isCeo
+            ? 'Chief Executive Officer'
+            : isAdmin
+            ? 'Plant Administrator'
+            : isStore
+            ? 'Tool Crib Storekeeper'
+            : isSenior
+            ? 'Senior Master Mechanic'
+            : 'Sewing Floor Mechanic',
         };
         setUser(customUser);
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(customUser));

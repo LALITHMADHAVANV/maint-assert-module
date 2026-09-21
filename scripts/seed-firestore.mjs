@@ -56,22 +56,43 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // ----------------------------------------------------------------------
-// TABLE 1: users (Lead Mechanics, Plant Managers, System Admins)
+// TABLE 1: users (CEO, Admin, Senior Mechanic, Line Mechanic, Store Person)
 // ----------------------------------------------------------------------
 const SEED_USERS = [
   {
-    uid: 'MEC-08',
-    name: 'Ramesh Kumar',
-    email: 'mechanic@textech.garments',
-    role: 'MECHANIC',
-    title: 'Lead Sewing Mechanic',
+    uid: 'CEO-01',
+    name: 'Dr. K. Ramanathan',
+    email: 'ceo@textech.garments',
+    role: 'CEO',
+    title: 'Chief Executive Officer (Managing Director)',
   },
   {
-    uid: 'MGR-01',
+    uid: 'ADM-01',
     name: 'V. Sundaram',
-    email: 'manager@textech.garments',
-    role: 'ASSET_MANAGER',
-    title: 'Asset & Plant Maintenance Manager',
+    email: 'admin@textech.garments',
+    role: 'ADMIN',
+    title: 'Plant Administrator & Asset Director',
+  },
+  {
+    uid: 'MEC-01',
+    name: 'Ramesh Kumar',
+    email: 'seniormechanic@textech.garments',
+    role: 'SENIOR_MECHANIC',
+    title: 'Senior Sewing Master Mechanic',
+  },
+  {
+    uid: 'MEC-08',
+    name: 'Suresh Babu',
+    email: 'mechanic@textech.garments',
+    role: 'MECHANIC',
+    title: 'Line Sewing Mechanic',
+  },
+  {
+    uid: 'STR-01',
+    name: 'M. Arumugam',
+    email: 'stores@textech.garments',
+    role: 'STORE_PERSON',
+    title: 'Tool Crib & Store In-Charge',
   },
 ];
 
