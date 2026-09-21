@@ -22,6 +22,7 @@ import {
   HardHat,
   MessageSquare,
   ChevronDown,
+  Users,
 } from 'lucide-react';
 import { LiveClock } from './LiveClock';
 import { useAuth } from '@/context/AuthContext';
@@ -239,13 +240,19 @@ export function Navbar() {
         icon: History,
       },
       {
+        label: '👥 Team Work Roster',
+        href: '/dashboard/mechanic-roster',
+        icon: Users,
+        highlight: true,
+      },
+      {
         label: 'Floor Grid',
         href: '/dashboard/floor-tracker',
         icon: Layers,
       },
     ];
   } else {
-    // 🛡️ PLANT ADMIN / ASSET MANAGER: Master oversight across all 7 operational modules
+    // 🛡️ PLANT ADMIN / ASSET MANAGER: Master oversight across all 8 operational modules
     navTabs = [
       {
         label: '1. Machine Entry & QR',
@@ -289,6 +296,11 @@ export function Navbar() {
         icon: Package,
         badge: pendingStoreCount > 0 ? pendingStoreCount : null,
         badgeColor: 'bg-emerald-500 text-white',
+      },
+      {
+        label: '👥 Team Roster',
+        href: '/dashboard/mechanic-roster',
+        icon: Users,
       },
     ];
   }

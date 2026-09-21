@@ -23,6 +23,7 @@ import {
   Tag,
   ArrowRight,
   Info,
+  Users,
 } from 'lucide-react';
 import { RepairTicket, Machine, SparePart, PPMSchedule } from '@/types/cmms';
 import {
@@ -36,6 +37,7 @@ import {
 } from '@/lib/services/cmmsService';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
+import { TeamScheduleModal } from '@/components/calendar/TeamScheduleModal';
 
 // Helper to format Date to 'YYYY-MM-DD'
 function toDateKey(d: Date): string {
@@ -79,6 +81,9 @@ export default function CalendarPage() {
   const [newPPMFrequency, setNewPPMFrequency] = useState<'Weekly' | 'Monthly' | '6-Month'>('Monthly');
   const [newPPMDueDate, setNewPPMDueDate] = useState<string>(() => toDateKey(new Date()));
   const [isCreatingPPM, setIsCreatingPPM] = useState(false);
+
+  // Senior Mechanic Team Work Schedule Pop-up state
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
 
   // Real-time subscriptions
   useEffect(() => {
@@ -474,16 +479,27 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          {/* Quick Schedule Button (Senior Mechanic & Plant Admin only) */}
+          {/* Senior Mechanic & Plant Admin Controls: Everyone's Work Board & Schedule PPM */}
           <div className="flex items-center flex-wrap gap-2.5">
             {canSchedulePPM && (
-              <button
-                onClick={() => setIsSchedulePPMOpen(true)}
-                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-indigo-600/25 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Schedule PPM Task</span>
-              </button>
+              <>
+                <button
+                  onClick={() => setIsTeamModalOpen(true)}
+                  className="px-3.5 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-indigo-600/25 cursor-pointer"
+                  title="View all mechanics scheduled work for any date"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>👥 Everyone&apos;s Work Board</span>
+                </button>
+
+                <button
+                  onClick={() => setIsSchedulePPMOpen(true)}
+                  className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Schedule PPM</span>
+                </button>
+              </>
             )}
 
             {/* View Mode Toggle (Month vs Agenda) */}
@@ -824,6 +840,17 @@ export default function CalendarPage() {
                   </span>
                 </div>
               </div>
+
+              {/* Senior Mechanic Quick Trigger to see everyone's work on this date */}
+              {canSchedulePPM && (
+                <button
+                  onClick={() => setIsTeamModalOpen(true)}
+                  className="w-full mt-3 py-2 px-3 bg-gradient-to-r from-violet-50 to-indigo-50 hover:from-violet-100 hover:to-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <Users className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>👥 See Everyone&apos;s Work on {selectedDayData.isToday ? 'Today' : selectedDayData.dateFormatted.split(',')[0]}</span>
+                </button>
+              )}
 
               {/* Day Tasks List */}
               <div className="mt-4 space-y-3 max-h-[580px] overflow-y-auto pr-1">
@@ -1368,6 +1395,18 @@ export default function CalendarPage() {
           </div>
         </div>
       )}
+
+      {/* 8. Senior Mechanic: Team Work Schedule Pop-up Modal */}
+      <TeamScheduleModal
+        isOpen={isTeamModalOpen}
+        onClose={() => setIsTeamModalOpen(false)}
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+        repairs={repairs}
+        ppmSchedules={ppmSchedules}
+        machines={machines}
+        onOpenResolveModal={handleOpenResolveModal}
+      />
     </div>
   );
 }

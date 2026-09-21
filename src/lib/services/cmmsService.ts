@@ -535,6 +535,35 @@ export async function resolveRepairTicket(
   }
 }
 
+export async function assignRepairTicket(
+  ticketId: string,
+  mechanicName: string
+): Promise<void> {
+  const currentRepairs = getLocal<RepairTicket[]>(STORAGE_KEYS.REPAIRS, SEED_REPAIRS);
+  const updatedRepairs = currentRepairs.map((r) =>
+    r.id === ticketId
+      ? {
+          ...r,
+          attendedBy: mechanicName,
+          status: (r.status === 'COMPLETED' ? 'COMPLETED' : 'IN_PROGRESS') as RepairTicket['status'],
+        }
+      : r
+  );
+  setLocal(STORAGE_KEYS.REPAIRS, updatedRepairs);
+  notifyLocal('repairs', updatedRepairs);
+
+  if (isFirebaseConfigured) {
+    try {
+      await updateDoc(doc(db, 'repairs', ticketId), {
+        attendedBy: mechanicName,
+        status: 'IN_PROGRESS',
+      });
+    } catch (e) {
+      console.error('Firestore assignRepairTicket error:', e);
+    }
+  }
+}
+
 /* ======================================================================
    PREVENTIVE MAINTENANCE (PPM) SERVICE
    ====================================================================== */
