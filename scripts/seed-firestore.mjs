@@ -16,7 +16,11 @@ function loadEnv() {
         if (trimmed && !trimmed.startsWith('#')) {
           const [key, ...valParts] = trimmed.split('=');
           if (key && valParts.length > 0) {
-            envVars[key.trim()] = valParts.join('=').trim();
+            let val = valParts.join('=').trim();
+            if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+              val = val.slice(1, -1).trim();
+            }
+            envVars[key.trim()] = val;
           }
         }
       });
@@ -820,7 +824,30 @@ async function seed() {
     console.log('  6. requisitions  -> ' + SEED_REQS.length + ' documents');
     console.log('================================================================\n');
   } catch (err) {
-    console.error('\n❌ Cloud Firestore population failed:', err);
+    if (err?.code === 'permission-denied' || String(err).includes('PERMISSION_DENIED')) {
+      console.error('\n🛑 Cloud Firestore PERMISSION_DENIED: Missing or insufficient permissions.');
+      console.error('----------------------------------------------------------------');
+      console.error('Your Firebase credentials are correct, but your Cloud Firestore Security Rules');
+      console.error('in Firebase Console currently block write operations.\n');
+      console.error('👉 HOW TO FIX IN 30 SECONDS:');
+      console.error('1. Open Firebase Console: https://console.firebase.google.com/project/maintenance-module-9c497/firestore/rules');
+      console.error('2. Go to: Build > Firestore Database > "Rules" tab');
+      console.error('3. Replace the rules with the following:');
+      console.error(`
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+      `);
+      console.error('4. Click the blue "Publish" button.');
+      console.error('5. Run "npm run seed:firebase" again!\n');
+    } else {
+      console.error('\n❌ Cloud Firestore population failed:', err);
+    }
     process.exit(1);
   }
 }
