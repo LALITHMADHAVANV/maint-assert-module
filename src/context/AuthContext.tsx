@@ -3,71 +3,165 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '@/types/cmms';
 import { SEED_USERS } from '@/lib/seedData';
-import { isFirebaseConfigured, auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import {
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut as fbSignOut,
   onAuthStateChanged,
+  updateProfile,
+  User as FirebaseUser,
 } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: UserProfile | null;
   role: UserRole;
+  firebaseUser: FirebaseUser | null;
   isFirebaseLive: boolean;
   isLoading: boolean;
-  loginAsRole: (role: UserRole) => void;
+  loginAsRole: (role: UserRole) => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_STORAGE_KEY = 'textech_auth_user';
+// Helper to determine role from email or profile
+function resolveUserRole(email: string): UserRole {
+  const lower = email.toLowerCase();
+  if (lower.includes('ceo')) return 'CEO';
+  if (lower.includes('admin') || lower.includes('mgr') || lower.includes('manager')) return 'ADMIN';
+  if (lower.includes('senior')) return 'SENIOR_MECHANIC';
+  if (lower.includes('store')) return 'STORE_PERSON';
+  return 'MECHANIC';
+}
+
+function resolveUserTitle(role: UserRole): string {
+  switch (role) {
+    case 'CEO':
+      return 'Chief Executive Officer (Managing Director)';
+    case 'ADMIN':
+    case 'ASSET_MANAGER':
+      return 'Plant Administrator & Asset Director';
+    case 'SENIOR_MECHANIC':
+      return 'Senior Sewing Master Mechanic';
+    case 'STORE_PERSON':
+      return 'Tool Crib & Store In-Charge';
+    case 'MECHANIC':
+      return 'Line Sewing Mechanic';
+  }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Check saved session in local storage first
+  // Sync profile document with Firestore users table
+  const syncUserProfile = async (fbUser: FirebaseUser): Promise<UserProfile> => {
     try {
-      const saved = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (saved) {
-        setUser(JSON.parse(saved));
-      } else {
-        // Default to Lead Mechanic for smooth instant demo
-        setUser(SEED_USERS[0]);
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(SEED_USERS[0]));
-      }
-    } catch {
-      setUser(SEED_USERS[0]);
-    }
+      const userDocRef = doc(db, 'users', fbUser.uid);
+      const snap = await getDoc(userDocRef);
 
-    // If Firebase is configured with real auth, listen to auth state changes
-    if (isFirebaseConfigured) {
-      const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
-        if (fbUser) {
-          const matchedProfile = SEED_USERS.find((u) => u.email === fbUser.email);
-          const activeUser: UserProfile = matchedProfile || {
-            uid: fbUser.uid,
-            name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Factory Staff',
-            email: fbUser.email || '',
-            role: 'MECHANIC',
-            title: 'Maintenance Technician',
-          };
-          setUser(activeUser);
-          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(activeUser));
-        }
-        setIsLoading(false);
-      });
-      return unsubscribe;
-    } else {
-      setIsLoading(false);
+      if (snap.exists()) {
+        const data = snap.data() as UserProfile;
+        setUser(data);
+        return data;
+      }
+
+      // Check if email matches a known seed template
+      const matchedTemplate = SEED_USERS.find(
+        (u) => u.email.toLowerCase() === (fbUser.email || '').toLowerCase()
+      );
+
+      const determinedRole: UserRole = matchedTemplate
+        ? matchedTemplate.role
+        : resolveUserRole(fbUser.email || '');
+
+      const newProfile: UserProfile = {
+        uid: fbUser.uid,
+        name: matchedTemplate?.name || fbUser.displayName || fbUser.email?.split('@')[0] || 'Factory Staff',
+        email: fbUser.email || '',
+        role: determinedRole,
+        title: matchedTemplate?.title || resolveUserTitle(determinedRole),
+      };
+
+      await setDoc(userDocRef, newProfile);
+      setUser(newProfile);
+      return newProfile;
+    } catch (err) {
+      console.warn('Firestore profile sync fallback:', err);
+      // Fallback in case Firestore rules or network delay
+      const matched = SEED_USERS.find(
+        (u) => u.email.toLowerCase() === (fbUser.email || '').toLowerCase()
+      );
+      const role = matched ? matched.role : resolveUserRole(fbUser.email || '');
+      const fallbackProfile: UserProfile = {
+        uid: fbUser.uid,
+        name: matched?.name || fbUser.displayName || fbUser.email?.split('@')[0] || 'Factory Staff',
+        email: fbUser.email || '',
+        role,
+        title: matched?.title || resolveUserTitle(role),
+      };
+      setUser(fallbackProfile);
+      return fallbackProfile;
     }
+  };
+
+  useEffect(() => {
+    // Pure Firebase Auth listener
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      setFirebaseUser(fbUser);
+      if (fbUser) {
+        await syncUserProfile(fbUser);
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const loginAsRole = (targetRole: UserRole) => {
-    const targetUser =
+  const loginWithEmail = async (email: string, pass: string): Promise<void> => {
+    setIsLoading(true);
+    try {
+      // 1. Attempt sign-in with Firebase Auth
+      const cred = await signInWithEmailAndPassword(auth, email, pass);
+      await syncUserProfile(cred.user);
+    } catch (err: unknown) {
+      const fbError = err as { code?: string; message?: string };
+      
+      // 2. If user does not exist in Firebase Authentication yet, automatically register them!
+      if (
+        fbError.code === 'auth/user-not-found' ||
+        fbError.code === 'auth/invalid-credential' ||
+        fbError.code === 'auth/invalid-login-credentials'
+      ) {
+        try {
+          const newCred = await createUserWithEmailAndPassword(auth, email, pass);
+          
+          const matched = SEED_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
+          const role = matched ? matched.role : resolveUserRole(email);
+          const name = matched ? matched.name : email.split('@')[0];
+
+          await updateProfile(newCred.user, { displayName: name });
+          await syncUserProfile(newCred.user);
+          return;
+        } catch (createErr) {
+          console.error('Firebase user registration failed:', createErr);
+          throw createErr;
+        }
+      }
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loginAsRole = async (targetRole: UserRole): Promise<void> => {
+    const target =
       SEED_USERS.find((u) => u.role === targetRole) ||
       (targetRole === 'CEO'
         ? SEED_USERS[0]
@@ -78,63 +172,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         : targetRole === 'STORE_PERSON'
         ? SEED_USERS[4]
         : SEED_USERS[3]);
-    setUser(targetUser);
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(targetUser));
+
+    await loginWithEmail(target.email, 'sewing123');
   };
 
-  const loginWithEmail = async (email: string, pass: string) => {
-    if (isFirebaseConfigured) {
-      await signInWithEmailAndPassword(auth, email, pass);
-    } else {
-      // Local fallback
-      const found = SEED_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
-      if (found) {
-        setUser(found);
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(found));
-      } else {
-        // Create demo user
-        const isCeo = email.toLowerCase().includes('ceo');
-        const isAdmin = email.toLowerCase().includes('admin') || email.toLowerCase().includes('mgr');
-        const isStore = email.toLowerCase().includes('store');
-        const isSenior = email.toLowerCase().includes('senior');
-
-        const assignedRole: UserRole = isCeo
-          ? 'CEO'
-          : isAdmin
-          ? 'ADMIN'
-          : isStore
-          ? 'STORE_PERSON'
-          : isSenior
-          ? 'SENIOR_MECHANIC'
-          : 'MECHANIC';
-
-        const customUser: UserProfile = {
-          uid: `USR-${Date.now().toString().slice(-4)}`,
-          name: email.split('@')[0],
-          email,
-          role: assignedRole,
-          title: isCeo
-            ? 'Chief Executive Officer'
-            : isAdmin
-            ? 'Plant Administrator'
-            : isStore
-            ? 'Tool Crib Storekeeper'
-            : isSenior
-            ? 'Senior Master Mechanic'
-            : 'Sewing Floor Mechanic',
-        };
-        setUser(customUser);
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(customUser));
-      }
-    }
-  };
-
-  const logout = () => {
-    if (isFirebaseConfigured) {
-      fbSignOut(auth).catch(() => {});
-    }
+  const logout = async (): Promise<void> => {
+    await fbSignOut(auth);
     setUser(null);
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+    setFirebaseUser(null);
   };
 
   return (
@@ -142,7 +187,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         role: user?.role || 'MECHANIC',
-        isFirebaseLive: isFirebaseConfigured,
+        firebaseUser,
+        isFirebaseLive: true,
         isLoading,
         loginAsRole,
         loginWithEmail,

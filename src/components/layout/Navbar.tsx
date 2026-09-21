@@ -97,39 +97,44 @@ export function Navbar() {
     }
   };
 
-  const handleSwitchRole = (newRole: UserRole) => {
-    loginAsRole(newRole);
+  const handleSwitchRole = async (newRole: UserRole) => {
     setIsRoleDropdownOpen(false);
+    try {
+      await loginAsRole(newRole);
 
-    let targetRoute = '/dashboard/machines';
-    let label = 'Staff';
+      let targetRoute = '/dashboard/machines';
+      let label = 'Staff';
 
-    switch (newRole) {
-      case 'CEO':
-        label = 'CEO (Dr. K. Ramanathan)';
-        targetRoute = '/dashboard/messages';
-        break;
-      case 'ADMIN':
-      case 'ASSET_MANAGER':
-        label = 'Plant Admin (V. Sundaram)';
-        targetRoute = '/dashboard/machines';
-        break;
-      case 'SENIOR_MECHANIC':
-        label = 'Senior Master Mechanic (Ramesh Kumar)';
-        targetRoute = '/dashboard/calendar';
-        break;
-      case 'MECHANIC':
-        label = 'Line Mechanic (Suresh Babu)';
-        targetRoute = '/dashboard/calendar';
-        break;
-      case 'STORE_PERSON':
-        label = 'Store Person (M. Arumugam)';
-        targetRoute = '/dashboard/store-inbox';
-        break;
+      switch (newRole) {
+        case 'CEO':
+          label = 'CEO (Dr. K. Ramanathan)';
+          targetRoute = '/dashboard/messages';
+          break;
+        case 'ADMIN':
+        case 'ASSET_MANAGER':
+          label = 'Plant Admin (V. Sundaram)';
+          targetRoute = '/dashboard/machines';
+          break;
+        case 'SENIOR_MECHANIC':
+          label = 'Senior Master Mechanic (Ramesh Kumar)';
+          targetRoute = '/dashboard/calendar';
+          break;
+        case 'MECHANIC':
+          label = 'Line Mechanic (Suresh Babu)';
+          targetRoute = '/dashboard/calendar';
+          break;
+        case 'STORE_PERSON':
+          label = 'Store Person (M. Arumugam)';
+          targetRoute = '/dashboard/store-inbox';
+          break;
+      }
+
+      showToast(`Authenticated via Firebase as ${label}!`, 'info');
+      router.push(targetRoute);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`Firebase Auth error: ${msg}`, 'error');
     }
-
-    showToast(`Switched active persona to ${label}`, 'info');
-    router.push(targetRoute);
   };
 
   interface NavTab {
@@ -256,12 +261,8 @@ export function Navbar() {
                 title="Click to reset or re-seed factory sample dataset"
                 className="hidden xl:flex items-center space-x-1.5 text-[11px] bg-slate-900 hover:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700 cursor-pointer text-slate-300 transition"
               >
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    isFirebaseLive ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
-                  }`}
-                />
-                <span>{isFirebaseLive ? 'Cloud Firestore' : 'Demo Local Mode'}</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-semibold text-emerald-300">Firebase Live</span>
                 <RefreshCw className={`w-3 h-3 text-slate-400 ml-1 ${isSeeding ? 'animate-spin' : ''}`} />
               </div>
 

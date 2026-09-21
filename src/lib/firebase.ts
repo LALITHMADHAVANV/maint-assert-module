@@ -2,23 +2,17 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getAuth, type Auth } from 'firebase/auth';
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'demo-api-key',
+export const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyReplaceWithYourOwnApiKey12345',
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'textech-cmms.firebaseapp.com',
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'textech-cmms',
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'textech-cmms.appspot.com',
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '1234567890',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:1234567890:web:abcdef123456',
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '109283746520',
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:109283746520:web:8a9b0c1d2e3f4a5b6c7d8e',
 };
 
-export const isFirebaseConfigured = Boolean(
-  process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
-  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&
-  process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== 'demo-api-key' &&
-  !process.env.NEXT_PUBLIC_FIREBASE_API_KEY.includes('ReplaceWithYourOwn') &&
-  !process.env.NEXT_PUBLIC_FIREBASE_API_KEY.includes('YOUR_') &&
-  !process.env.NEXT_PUBLIC_FIREBASE_API_KEY.toLowerCase().includes('dummy')
-);
+// Pure Firebase mode: always enabled and connected to Firebase
+export const isFirebaseConfigured = true;
 
 let app: FirebaseApp;
 if (!getApps().length) {

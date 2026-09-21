@@ -73,37 +73,45 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickRole = (role: UserRole) => {
-    loginAsRole(role);
-    let targetRoute = '/dashboard/machines';
-    let roleLabel = 'Staff';
+  const handleQuickRole = async (role: UserRole) => {
+    setIsLoading(true);
+    try {
+      await loginAsRole(role);
+      let targetRoute = '/dashboard/machines';
+      let roleLabel = 'Staff';
 
-    switch (role) {
-      case 'CEO':
-        roleLabel = 'CEO (Dr. K. Ramanathan)';
-        targetRoute = '/dashboard/messages';
-        break;
-      case 'ADMIN':
-      case 'ASSET_MANAGER':
-        roleLabel = 'Plant Admin (V. Sundaram)';
-        targetRoute = '/dashboard/machines';
-        break;
-      case 'SENIOR_MECHANIC':
-        roleLabel = 'Senior Mechanic (Ramesh Kumar)';
-        targetRoute = '/dashboard/calendar';
-        break;
-      case 'MECHANIC':
-        roleLabel = 'Line Mechanic (Suresh Babu)';
-        targetRoute = '/dashboard/calendar';
-        break;
-      case 'STORE_PERSON':
-        roleLabel = 'Store Person (M. Arumugam)';
-        targetRoute = '/dashboard/store-inbox';
-        break;
+      switch (role) {
+        case 'CEO':
+          roleLabel = 'CEO (Dr. K. Ramanathan)';
+          targetRoute = '/dashboard/messages';
+          break;
+        case 'ADMIN':
+        case 'ASSET_MANAGER':
+          roleLabel = 'Plant Admin (V. Sundaram)';
+          targetRoute = '/dashboard/machines';
+          break;
+        case 'SENIOR_MECHANIC':
+          roleLabel = 'Senior Mechanic (Ramesh Kumar)';
+          targetRoute = '/dashboard/calendar';
+          break;
+        case 'MECHANIC':
+          roleLabel = 'Line Mechanic (Suresh Babu)';
+          targetRoute = '/dashboard/calendar';
+          break;
+        case 'STORE_PERSON':
+          roleLabel = 'Store Person (M. Arumugam)';
+          targetRoute = '/dashboard/store-inbox';
+          break;
+      }
+
+      showToast(`Authenticated via Firebase as ${roleLabel}!`, 'success');
+      router.push(targetRoute);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`Firebase Auth error: ${msg}`, 'error');
+    } finally {
+      setIsLoading(false);
     }
-
-    showToast(`Logged in as ${roleLabel}`, 'success');
-    router.push(targetRoute);
   };
 
   return (
@@ -116,10 +124,11 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight">TexTech Garments</h1>
           <p className="text-xs uppercase tracking-widest text-indigo-300 font-semibold mt-0.5">
-            Sewing Maintenance & Asset Ecosystem
+            Firebase Cloud Authentication & CMMS Suite
           </p>
-          <div className="absolute top-4 right-4 text-[10px] bg-indigo-500/20 px-2.5 py-0.5 rounded-full text-indigo-200 border border-indigo-500/30 font-semibold">
-            Floor v4.2
+          <div className="absolute top-4 right-4 flex items-center gap-1 text-[10px] bg-emerald-500/20 px-2.5 py-0.5 rounded-full text-emerald-300 border border-emerald-500/30 font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Firebase Auth</span>
           </div>
         </div>
 
@@ -128,7 +137,7 @@ export default function LoginPage() {
           <form onSubmit={handleFormLogin} className="space-y-3">
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                User ID / Employee Code
+                User Email or Employee Code
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
@@ -139,14 +148,14 @@ export default function LoginPage() {
                   value={emailOrId}
                   onChange={(e) => setEmailOrId(e.target.value)}
                   className="w-full pl-10 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition text-slate-800"
-                  placeholder="e.g. CEO-01, STR-01, MEC-01"
+                  placeholder="e.g. ceo@textech.garments or CEO-01"
                 />
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                Floor Security PIN / Pass
+                Firebase Security Password / PIN
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
@@ -165,18 +174,18 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-sm rounded-xl shadow-lg shadow-indigo-500/25 transition duration-150 flex items-center justify-center gap-2"
+              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-60 text-white font-semibold text-sm rounded-xl shadow-lg shadow-indigo-500/25 transition duration-150 flex items-center justify-center gap-2"
             >
-              <span>{isLoading ? 'Authenticating...' : 'Enter System Dashboard'}</span>
+              <span>{isLoading ? 'Authenticating with Firebase...' : 'Sign in with Firebase Auth'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
 
-          {/* Quick Demo Role Selector (5 specialized roles) */}
+          {/* Pure Firebase Persona Quick Auth (5 specialized roles) */}
           <div className="pt-3 border-t border-slate-100">
             <span className="text-xs text-slate-500 block mb-2 font-bold flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-              <span>1-Click Persona Access (Select Role):</span>
+              <span>Firebase 1-Click Authentication (Select Persona):</span>
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {/* CEO */}
