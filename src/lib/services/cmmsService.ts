@@ -630,6 +630,21 @@ export async function completePPMTask(
   }
 }
 
+export async function createPPMSchedule(schedule: PPMSchedule): Promise<void> {
+  const currentSchedules = getLocal<PPMSchedule[]>(STORAGE_KEYS.PPM, SEED_PPM_SCHEDULES);
+  const updatedSchedules = [schedule, ...currentSchedules];
+  setLocal(STORAGE_KEYS.PPM, updatedSchedules);
+  notifyLocal('ppm', updatedSchedules);
+
+  if (isFirebaseConfigured) {
+    try {
+      await setDoc(doc(db, 'ppm_schedules', schedule.id), schedule);
+    } catch (e) {
+      console.error('Firestore createPPMSchedule error:', e);
+    }
+  }
+}
+
 /* ======================================================================
    MONTHLY INDENTS & CRITICAL CEO REQUISITIONS SERVICE
    ====================================================================== */
