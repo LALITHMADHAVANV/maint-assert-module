@@ -124,24 +124,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const loginWithEmail = async (email: string, pass: string): Promise<void> => {
+  const loginWithEmail = async (rawEmail: string, rawPass: string): Promise<void> => {
     setIsLoading(true);
+    const email = (rawEmail || '').trim();
+    const pass = (rawPass || '').trim();
+
+    if (!email) {
+      setIsLoading(false);
+      throw new Error('Please enter your email or employee ID');
+    }
+    if (!pass) {
+      setIsLoading(false);
+      throw new Error('Please enter your password');
+    }
+
     try {
       // 1. Attempt sign-in with Firebase Auth
       const cred = await signInWithEmailAndPassword(auth, email, pass);
       await syncUserProfile(cred.user);
     } catch (err: unknown) {
       const fbError = err as { code?: string; message?: string };
-      
-      // 2. If user does not exist in Firebase Authentication yet, automatically register them!
+
+      // If user typed wrong password, or user doesn't exist
       if (
         fbError.code === 'auth/user-not-found' ||
         fbError.code === 'auth/invalid-credential' ||
         fbError.code === 'auth/invalid-login-credentials'
       ) {
         try {
+          // Attempt automatic account creation if truly a new user
           const newCred = await createUserWithEmailAndPassword(auth, email, pass);
-          
+
           const matched = SEED_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
           const role = matched ? matched.role : resolveUserRole(email);
           const name = matched ? matched.name : email.split('@')[0];
@@ -149,11 +162,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await updateProfile(newCred.user, { displayName: name });
           await syncUserProfile(newCred.user);
           return;
-        } catch (createErr) {
+        } catch (createErr: unknown) {
+          const createFbErr = createErr as { code?: string; message?: string };
+          // If email is already in use, the account DOES exist, but the password provided was wrong!
+          if (createFbErr.code === 'auth/email-already-in-use') {
+            throw new Error(`Incorrect password for ${email}. Note: Default password is: sewing123 (all lowercase, no spaces)`);
+          }
           console.error('Firebase user registration failed:', createErr);
           throw createErr;
         }
       }
+
+      if (fbError.code === 'auth/wrong-password') {
+        throw new Error(`Incorrect password for ${email}. Note: Default password is: sewing123 (all lowercase, no spaces)`);
+      }
+
       throw err;
     } finally {
       setIsLoading(false);
