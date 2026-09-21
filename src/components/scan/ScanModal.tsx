@@ -1,0 +1,395 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { QrCode, X, AlertTriangle, ArrowRightLeft, Radio, Camera } from 'lucide-react';
+import { Machine, FloorLine, RepairUrgency } from '@/types/cmms';
+import { subscribeMachines, createBreakdownTicket, relocateMachine } from '@/lib/services/cmmsService';
+import { useToast } from '@/context/ToastContext';
+import { useAuth } from '@/context/AuthContext';
+
+interface ScanModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  preselectedMachineId?: string;
+  onOpenLiveScanner?: () => void;
+}
+
+export function ScanModal({
+  isOpen,
+  onClose,
+  preselectedMachineId,
+  onOpenLiveScanner,
+}: ScanModalProps) {
+  const [machines, setMachines] = useState<Machine[]>([]);
+  const [selectedMachineId, setSelectedMachineId] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'report' | 'relocate'>('report');
+
+  // Report fault fields
+  const [faultType, setFaultType] = useState<string>(
+    'Skipping Stitches / Looper Timing Misalignment'
+  );
+  const [urgency, setUrgency] = useState<RepairUrgency>('CRITICAL');
+  const [faultNotes, setFaultNotes] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Relocate fields
+  const [targetLine, setTargetLine] = useState<FloorLine>('Line 01');
+  const [targetStation, setTargetStation] = useState<string>('Station 01');
+  const [relocateReason, setRelocateReason] = useState<string>('');
+
+  const { showToast } = useToast();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const unsub = subscribeMachines((data) => {
+      setMachines(data);
+      if (preselectedMachineId) {
+        setSelectedMachineId(preselectedMachineId);
+      } else if (data.length > 0 && !selectedMachineId) {
+        setSelectedMachineId(data[0].id);
+      }
+    });
+    return () => unsub();
+  }, [preselectedMachineId, selectedMachineId]);
+
+  useEffect(() => {
+    if (preselectedMachineId) {
+      setSelectedMachineId(preselectedMachineId);
+    }
+  }, [preselectedMachineId]);
+
+  if (!isOpen) return null;
+
+  const currentMachine = machines.find((m) => m.id === selectedMachineId) || machines[0];
+
+  const handleBreakdownSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentMachine) return;
+    setIsSubmitting(true);
+
+    try {
+      const ticketId = await createBreakdownTicket({
+        machineId: currentMachine.id,
+        machineType: currentMachine.typeName || currentMachine.type,
+        line: currentMachine.currentLine,
+        reportedAt: new Date().toISOString(),
+        reportedBy: `${user?.name || 'Operator'} (${user?.title || 'Floor'})`,
+        faultCategory: faultType,
+        faultDetails: faultNotes.trim() || 'Reported from floor terminal via QR tag scan.',
+        urgency,
+      });
+
+      showToast(
+        `Critical breakdown #${ticketId} dispatched for ${currentMachine.id} on ${currentMachine.currentLine}!`,
+        'error'
+      );
+      setFaultNotes('');
+      onClose();
+    } catch (err) {
+      showToast('Failed to dispatch breakdown ticket', 'error');
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRelocateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentMachine) return;
+    setIsSubmitting(true);
+
+    try {
+      await relocateMachine(
+        currentMachine.id,
+        targetLine,
+        targetStation,
+        relocateReason.trim() || 'Floor line rebalancing',
+        user?.name || 'Mechanic'
+      );
+
+      showToast(
+        `Machine ${currentMachine.id} relocated to ${targetLine} (${targetStation})`,
+        'success'
+      );
+      setRelocateReason('');
+      onClose();
+    } catch (err) {
+      showToast('Failed to relocate machine', 'error');
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        {/* Modal Header */}
+        <div className="bg-slate-900 px-5 py-4 text-white flex items-center justify-between">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-bold">
+              <QrCode className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold tracking-tight">Floor QR Terminal</h4>
+              <p className="text-[10px] text-slate-400">Handheld Operator & Mechanic Dispatcher</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {onOpenLiveScanner && (
+              <button
+                type="button"
+                onClick={onOpenLiveScanner}
+                className="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 px-2.5 py-1 rounded-lg border border-slate-700 flex items-center gap-1.5 transition"
+                title="Use Camera Scanner"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Camera</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-white p-1 rounded-lg transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Scanned Machine Selector */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
+              Scanned Machine Tag
+            </label>
+            <select
+              value={selectedMachineId}
+              onChange={(e) => setSelectedMachineId(e.target.value)}
+              className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800"
+            >
+              {machines.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.id} - {m.brand} {m.model} ({m.currentLine})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Machine Brief Card */}
+          {currentMachine && (
+            <div className="bg-indigo-50/70 p-3 rounded-xl border border-indigo-100 text-xs flex justify-between items-center">
+              <div>
+                <div className="font-bold text-indigo-950">
+                  {currentMachine.brand} {currentMachine.model} ({currentMachine.type})
+                </div>
+                <div className="text-indigo-700 text-[11px] mt-0.5">
+                  Location: <span className="font-semibold">{currentMachine.currentLine}</span> •{' '}
+                  {currentMachine.stationNo}
+                </div>
+              </div>
+              <span
+                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                  currentMachine.status === 'ACTIVE'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : currentMachine.status === 'BREAKDOWN'
+                    ? 'bg-rose-100 text-rose-800 urgent-pulse'
+                    : 'bg-amber-100 text-amber-800'
+                }`}
+              >
+                {currentMachine.status}
+              </span>
+            </div>
+          )}
+
+          {/* Action Tabs */}
+          <div className="flex border-b border-slate-200 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setActiveTab('report')}
+              className={`flex-1 py-2.5 text-center border-b-2 transition flex items-center justify-center gap-1.5 ${
+                activeTab === 'report'
+                  ? 'border-rose-600 text-rose-600'
+                  : 'border-transparent text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+              <span>Report Machine Fault</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('relocate')}
+              className={`flex-1 py-2.5 text-center border-b-2 transition flex items-center justify-center gap-1.5 ${
+                activeTab === 'relocate'
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Relocate Machine</span>
+            </button>
+          </div>
+
+          {/* Tab 1: Breakdown Report Form */}
+          {activeTab === 'report' && (
+            <form onSubmit={handleBreakdownSubmit} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Specific Sewing Fault *
+                </label>
+                <select
+                  value={faultType}
+                  onChange={(e) => setFaultType(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800"
+                >
+                  <option value="Skipping Stitches / Looper Timing Misalignment">
+                    Skipping Stitches / Looper Timing Misalignment
+                  </option>
+                  <option value="Frequent Needle Breakage">
+                    Frequent Needle Breakage (Deflection / Feed clash)
+                  </option>
+                  <option value="Thread Tension / Puckering">
+                    Thread Tension / Seam Puckering (Birdnesting)
+                  </option>
+                  <option value="Motor Error / E-07 Controller">
+                    Motor / Direct-Drive Controller Error Code
+                  </option>
+                  <option value="Oil Reservoir Leakage">
+                    Oil Reservoir Leakage / Siphon Failure
+                  </option>
+                  <option value="Bobbin Winder / Cutter Jam">
+                    Under-bed Thread Trimmer (UTT) / Cutter Jam
+                  </option>
+                  <option value="Severe Noise & Vibration">
+                    Severe Head Noise & Bearing Vibration
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Severity / Production Impact *
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label
+                    className={`flex items-center p-2.5 rounded-lg border text-xs font-bold cursor-pointer transition ${
+                      urgency === 'CRITICAL'
+                        ? 'border-rose-400 bg-rose-50 text-rose-800 ring-2 ring-rose-400'
+                        : 'border-slate-200 bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="scan-urgency"
+                      checked={urgency === 'CRITICAL'}
+                      onChange={() => setUrgency('CRITICAL')}
+                      className="mr-2 text-rose-600"
+                    />
+                    <span>Critical (Line Stopped)</span>
+                  </label>
+                  <label
+                    className={`flex items-center p-2.5 rounded-lg border text-xs font-bold cursor-pointer transition ${
+                      urgency === 'WARNING'
+                        ? 'border-amber-400 bg-amber-50 text-amber-800 ring-2 ring-amber-400'
+                        : 'border-slate-200 bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="scan-urgency"
+                      checked={urgency === 'WARNING'}
+                      onChange={() => setUrgency('WARNING')}
+                      className="mr-2 text-amber-600"
+                    />
+                    <span>Warning (Quality Defect)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Floor Notes for Mechanic
+                </label>
+                <textarea
+                  value={faultNotes}
+                  onChange={(e) => setFaultNotes(e.target.value)}
+                  rows={2}
+                  placeholder="e.g. Breaking needle on heavy seam crossover on pocket attachment..."
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white rounded-xl text-xs font-bold shadow-md shadow-rose-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Radio className="w-3.5 h-3.5" />
+                <span>Broadcast Breakdown to Mechanic Queue</span>
+              </button>
+            </form>
+          )}
+
+          {/* Tab 2: Relocate Machine Form */}
+          {activeTab === 'relocate' && (
+            <form onSubmit={handleRelocateSubmit} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Move To Target Line / Area *
+                </label>
+                <select
+                  value={targetLine}
+                  onChange={(e) => setTargetLine(e.target.value as FloorLine)}
+                  required
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800"
+                >
+                  <option value="Line 01">Line 01 (Polo / Knit)</option>
+                  <option value="Line 02">Line 02 (T-Shirts Basic)</option>
+                  <option value="Line 03">Line 03 (Woven Shirts)</option>
+                  <option value="Line 04">Line 04 (Denim Bottoms)</option>
+                  <option value="Buffer Workshop">Workshop Buffer (Standby Area)</option>
+                  <option value="Scrap Bay">Decommission / Parts Cannibalization</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Target Station Position
+                </label>
+                <input
+                  type="text"
+                  value={targetStation}
+                  onChange={(e) => setTargetStation(e.target.value)}
+                  placeholder="Station 06"
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Reason for Relocation
+                </label>
+                <input
+                  type="text"
+                  value={relocateReason}
+                  onChange={(e) => setRelocateReason(e.target.value)}
+                  placeholder="Style changeover: polo to woven shirt line balancing"
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+                <span>Confirm Machine Movement</span>
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
