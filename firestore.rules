@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // 1. Users collection (CEO, Admin, Mechanics, Store Person)
+    match /users/{userId} {
+      allow read: if true; // Allows profile lookup during login
+      allow write: if isAuthenticated() || true; // Allows registration & profile updates
+    }
+
+    // 2. Sewing Machinery Fleet
+    match /machines/{machineId} {
+      allow read, write: if true; // Or: if isAuthenticated();
+    }
+
+    // 3. Tool Crib Spare Parts Inventory
+    match /parts/{partId} {
+      allow read, write: if true; // Or: if isAuthenticated();
+    }
+
+    // 4. Breakdown Tickets & Historical Maintenance Ledger
+    match /repairs/{repairId} {
+      allow read, write: if true; // Or: if isAuthenticated();
+    }
+
+    // 5. Preventive Maintenance Schedules (PPM)
+    match /ppm_schedules/{scheduleId} {
+      allow read, write: if true; // Or: if isAuthenticated();
+    }
+
+    // 6. Requisitions (Critical CEO, Urgent Needs, Monthly Indents)
+    match /requisitions/{reqId} {
+      allow read, write: if true; // Or: if isAuthenticated();
+    }
+
+    // Default fallback
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
