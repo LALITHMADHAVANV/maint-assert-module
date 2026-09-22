@@ -1,11 +1,44 @@
+export type AssetCategory =
+  | 'MACHINE' // Sewing & Industrial Machinery
+  | 'TABLE' // Work, Cutting, Inspection & Packing Tables
+  | 'CHAIR' // Operator, Supervisor & Mechanic Seating
+  | 'LIGHT' // High-Bay, Task & Inspection Lights
+  | 'FAN' // Industrial Ceiling, Exhaust & Pedestal Fans
+  | 'UTILITY'; // Steam Boilers, Air Compressors, Fire Safety
+
 export type MachineType =
+  // Machinery
   | 'SNLS' // Single Needle Lockstitch
   | 'DNLS' // Double Needle Lockstitch
   | 'OVERLOCK' // 4-Thread or 5-Thread Overlock
   | 'FLATLOCK' // Flatlock / Interlock (Coverstitch)
   | 'BUTTONHOLE' // Buttonhole Indexer
   | 'BARTACK' // Electronic Bartack
-  | 'FEED_OFF_ARM'; // Feed-off-the-arm
+  | 'FEED_OFF_ARM' // Feed-off-the-arm
+  | 'CUTTING_MACHINE' // Fabric End / Straight Knife Cutter
+  | 'FUSING_PRESS' // Collar / Cuff Fusing Press
+  // Tables
+  | 'TABLE_CUTTING' // Fabric Spreading & Cutting Table
+  | 'TABLE_SEWING' // Sewing Workstation Table
+  | 'TABLE_INSPECTION' // QC Garment Checking Table
+  | 'TABLE_PACKING' // Final Folding & Poly-Bagging Table
+  | 'TABLE_PATTERN' // Pattern Drafting & Master Table
+  // Chairs
+  | 'CHAIR_OPERATOR' // Ergonomic Sewing Swivel Chair
+  | 'CHAIR_SUPERVISOR' // High-Back Supervisor Chair
+  | 'CHAIR_STOOL' // Mechanic Workshop Stool
+  // Lighting
+  | 'LIGHT_HIGHBAY' // Overhead Linear High-Bay LED
+  | 'LIGHT_TASK' // Needle Station Gooseneck Lamp
+  | 'LIGHT_INSPECTION' // Color-Checking Inspection Tube
+  // Fans & Air Movement
+  | 'FAN_CEILING' // Heavy Industrial Ceiling Fan
+  | 'FAN_EXHAUST' // Wall Exhaust Blower
+  | 'FAN_PEDESTAL' // High-Velocity Floor Pedestal Fan
+  // Utilities
+  | 'UTILITY_BOILER' // Industrial Steam Generator
+  | 'UTILITY_COMPRESSOR' // Screw Air Compressor
+  | 'UTILITY_SAFETY'; // Line Fire Safety Station
 
 export type MotorType = 'SERVO' | 'CLUTCH';
 
@@ -25,20 +58,23 @@ export type FloorLine =
   | 'Scrap Bay';
 
 export interface Machine {
-  id: string; // e.g., "MC-SNLS-101"
-  brand: string; // "Juki", "Brother", "Jack", "Pegasus", "Siruba", "Yamato"
-  model: string; // "DDL-8700-7", "S-7200C"
+  id: string; // e.g., "MC-SNLS-101", "TBL-CUT-101", "CHR-ERG-101", "LGT-HBY-101", "FAN-CEIL-101"
+  name?: string; // Display name, e.g. "Line 01 Fabric Spreading Table"
+  brand: string; // "Juki", "Featherlite", "Philips", "Almonard", "Eastman", "Godrej"
+  model: string; // "DDL-8700-7", "Optima-360", "120W-LED"
+  category?: AssetCategory; // Defaults to 'MACHINE' if absent
   type: MachineType;
   typeName?: string; // e.g. "Single Needle Lockstitch (SNLS)"
-  motorType: MotorType;
+  motorType?: MotorType;
   purchaseDate: string; // ISO format or YYYY-MM-DD
   cost: number; // USD
   status: MachineStatus;
   currentLine: FloorLine;
-  stationNo: string; // e.g. "Station 04"
+  stationNo: string; // e.g. "Station 04", "Cutting Bay", "Inspection Bay"
   operator?: string;
   totalDowntimeMinutes: number;
   ageYears?: number;
+  specs?: string; // e.g. "12ft x 6ft Laminated Surface", "360° Swivel with Lumbar Support", "120W 6500K Day White"
 }
 
 export type PartCategory =

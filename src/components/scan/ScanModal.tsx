@@ -213,7 +213,7 @@ export function ScanModal({
               }`}
             >
               <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
-              <span>Report Machine Fault</span>
+              <span>Report Fault / Breakdown</span>
             </button>
             <button
               type="button"
@@ -225,7 +225,7 @@ export function ScanModal({
               }`}
             >
               <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Relocate Machine</span>
+              <span>Relocate Asset</span>
             </button>
           </div>
 
@@ -234,7 +234,7 @@ export function ScanModal({
             <form onSubmit={handleBreakdownSubmit} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Specific Sewing Fault *
+                  Specific Asset Fault or Defect *
                 </label>
                 <select
                   value={faultType}
@@ -242,27 +242,106 @@ export function ScanModal({
                   required
                   className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800"
                 >
-                  <option value="Skipping Stitches / Looper Timing Misalignment">
-                    Skipping Stitches / Looper Timing Misalignment
-                  </option>
-                  <option value="Frequent Needle Breakage">
-                    Frequent Needle Breakage (Deflection / Feed clash)
-                  </option>
-                  <option value="Thread Tension / Puckering">
-                    Thread Tension / Seam Puckering (Birdnesting)
-                  </option>
-                  <option value="Motor Error / E-07 Controller">
-                    Motor / Direct-Drive Controller Error Code
-                  </option>
-                  <option value="Oil Reservoir Leakage">
-                    Oil Reservoir Leakage / Siphon Failure
-                  </option>
-                  <option value="Bobbin Winder / Cutter Jam">
-                    Under-bed Thread Trimmer (UTT) / Cutter Jam
-                  </option>
-                  <option value="Severe Noise & Vibration">
-                    Severe Head Noise & Bearing Vibration
-                  </option>
+                  {currentMachine?.category === 'TABLE' ? (
+                    <>
+                      <option value="Table Top Surface Damaged / Splintered Laminate">
+                        Table Top Surface Damaged / Splintered Laminate
+                      </option>
+                      <option value="K-Stand Iron Base Shaking / Leg Leveler Broken">
+                        K-Stand Iron Base Shaking / Leg Leveler Broken
+                      </option>
+                      <option value="Waste Chute / Vacuum Fabric Cutout Blocked">
+                        Waste Chute / Vacuum Fabric Cutout Blocked
+                      </option>
+                      <option value="Embedded Metric Rule Peeling or Worn Off">
+                        Embedded Metric Rule Peeling or Worn Off
+                      </option>
+                    </>
+                  ) : currentMachine?.category === 'CHAIR' ? (
+                    <>
+                      <option value="Hydraulic Gas-Lift Cylinder Sinking Under Weight">
+                        Hydraulic Gas-Lift Cylinder Sinking Under Weight
+                      </option>
+                      <option value="Castor Wheel Broken / Stiff Swivel Movement">
+                        Castor Wheel Broken / Stiff Swivel Movement
+                      </option>
+                      <option value="Lumbar Backrest Support Loose / Bolt Sheared">
+                        Lumbar Backrest Support Loose / Bolt Sheared
+                      </option>
+                      <option value="Seat Foam Compressed / Fabric Torn">
+                        Seat Foam Compressed / Fabric Torn
+                      </option>
+                    </>
+                  ) : currentMachine?.category === 'LIGHT' ? (
+                    <>
+                      <option value="Overhead LED Driver Ballast Flickering">
+                        Overhead LED Driver Ballast Flickering
+                      </option>
+                      <option value="Needle Task Lamp Gooseneck Loose / Drifting">
+                        Needle Task Lamp Gooseneck Loose / Drifting
+                      </option>
+                      <option value="Complete Fixture Darkness / Phase Circuit Fault">
+                        Complete Fixture Darkness / Phase Circuit Fault
+                      </option>
+                      <option value="Diffuser Shield Cracked / High Glare">
+                        Diffuser Shield Cracked / High Glare
+                      </option>
+                    </>
+                  ) : currentMachine?.category === 'FAN' ? (
+                    <>
+                      <option value="Ceiling Downrod Vibration / Blade Angle Imbalance">
+                        Ceiling Downrod Vibration / Blade Angle Imbalance
+                      </option>
+                      <option value="Dry Bearing Grinding Noise / Screeching">
+                        Dry Bearing Grinding Noise / Screeching
+                      </option>
+                      <option value="Motor Thermal Overload / Trips Breaker">
+                        Motor Thermal Overload / Trips Breaker
+                      </option>
+                      <option value="Exhaust Blower Duct Blocked with Cotton Lint">
+                        Exhaust Blower Duct Blocked with Cotton Lint
+                      </option>
+                    </>
+                  ) : currentMachine?.category === 'UTILITY' ? (
+                    <>
+                      <option value="Steam Pressure Drop Below Operating 4 Bar">
+                        Steam Pressure Drop Below Operating 4 Bar
+                      </option>
+                      <option value="Compressor Air Leak / Drain Solenoid Stuck">
+                        Compressor Air Leak / Drain Solenoid Stuck
+                      </option>
+                      <option value="Pressure Relief Safety Valve Discharging">
+                        Pressure Relief Safety Valve Discharging
+                      </option>
+                      <option value="Safety Unit Inspection Tag Expired / Low Pressure">
+                        Safety Unit Inspection Tag Expired / Low Pressure
+                      </option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="Skipping Stitches / Looper Timing Misalignment">
+                        Skipping Stitches / Looper Timing Misalignment
+                      </option>
+                      <option value="Frequent Needle Breakage">
+                        Frequent Needle Breakage (Deflection / Feed clash)
+                      </option>
+                      <option value="Thread Tension / Puckering">
+                        Thread Tension / Seam Puckering (Birdnesting)
+                      </option>
+                      <option value="Motor Error / E-07 Controller">
+                        Motor / Direct-Drive Controller Error Code
+                      </option>
+                      <option value="Oil Reservoir Leakage">
+                        Oil Reservoir Leakage / Siphon Failure
+                      </option>
+                      <option value="Bobbin Winder / Cutter Jam">
+                        Under-bed Thread Trimmer (UTT) / Cutter Jam
+                      </option>
+                      <option value="Severe Noise & Vibration">
+                        Severe Head Noise & Bearing Vibration
+                      </option>
+                    </>
+                  )}
                 </select>
               </div>
 
