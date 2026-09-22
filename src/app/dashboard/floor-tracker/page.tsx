@@ -182,7 +182,7 @@ export function getAssetDepartment(asset: Machine): FactoryDepartment {
   return 'Sewing Floor';
 }
 
-export function getCategoryMeta(category?: AssetCategory) {
+export function getCategoryMeta(category?: AssetCategory, asset?: Machine) {
   switch (category) {
     case 'TABLE':
       return {
@@ -220,15 +220,44 @@ export function getCategoryMeta(category?: AssetCategory) {
         badge: 'bg-cyan-50 text-cyan-800 border-cyan-200',
         dot: 'bg-cyan-500',
       };
-    case 'UTILITY':
+    case 'UTILITY': {
+      const isLight =
+        asset?.type?.startsWith('LIGHT') ||
+        asset?.id?.startsWith('LGT') ||
+        asset?.category === 'LIGHT';
+      const isFan =
+        asset?.type?.startsWith('FAN') ||
+        asset?.id?.startsWith('FAN') ||
+        asset?.category === 'FAN';
+      if (isLight) {
+        return {
+          label: 'Lighting Fixture (Utility)',
+          plural: 'Utilities, Light & Vent',
+          icon: Lightbulb,
+          color: 'text-yellow-700 bg-yellow-50/80 border-yellow-200/60',
+          badge: 'bg-yellow-50 text-yellow-800 border-yellow-200',
+          dot: 'bg-yellow-500',
+        };
+      }
+      if (isFan) {
+        return {
+          label: 'Ventilation Fan (Utility)',
+          plural: 'Utilities, Light & Vent',
+          icon: Fan,
+          color: 'text-cyan-700 bg-cyan-50/80 border-cyan-200/60',
+          badge: 'bg-cyan-50 text-cyan-800 border-cyan-200',
+          dot: 'bg-cyan-500',
+        };
+      }
       return {
         label: 'Plant Utility',
-        plural: 'Central Utilities',
+        plural: 'Utilities, Light & Vent',
         icon: Flame,
         color: 'text-purple-700 bg-purple-50/80 border-purple-200/60',
         badge: 'bg-purple-50 text-purple-800 border-purple-200',
         dot: 'bg-purple-500',
       };
+    }
     case 'MACHINE':
     default:
       return {
@@ -292,6 +321,7 @@ export default function FloorTrackerPage() {
 
   // New Asset Form State
   const [newCategory, setNewCategory] = useState<AssetCategory>('TABLE');
+  const [newUtilitySubtype, setNewUtilitySubtype] = useState<'PLANT' | 'LIGHT' | 'FAN'>('PLANT');
   const [newMachineCat, setNewMachineCat] = useState<MachineCategoryGroup>('OVERLOCK');
   const [newMachineType, setNewMachineType] = useState<MachineType>('OVERLOCK_4_THREAD');
   const [newDepartment, setNewDepartment] = useState<FactoryDepartment>('Cutting Department');
@@ -325,13 +355,20 @@ export default function FloorTrackerPage() {
         const found = machines.find((m) => m.id === assetIdParam);
         if (found) {
           setSelectedAssetForModal(found);
-          setModalInitialCategory(found.category || 'MACHINE');
+          const fCat = found.category || 'MACHINE';
+          setModalInitialCategory(fCat === 'LIGHT' || fCat === 'FAN' ? 'UTILITY' : fCat);
           setIsAssetModalOpen(true);
         }
       } else if (catParam && ['MACHINE', 'TABLE', 'CHAIR', 'LIGHT', 'FAN', 'UTILITY'].includes(catParam)) {
-        const firstInCat = machines.find((m) => (m.category || 'MACHINE') === catParam);
+        const targetCat = catParam === 'LIGHT' || catParam === 'FAN' ? 'UTILITY' : catParam;
+        const firstInCat = machines.find((m) => {
+          const mCat = m.category || 'MACHINE';
+          return targetCat === 'UTILITY'
+            ? mCat === 'UTILITY' || mCat === 'LIGHT' || mCat === 'FAN'
+            : mCat === targetCat;
+        });
         setSelectedAssetForModal(firstInCat || null);
-        setModalInitialCategory(catParam);
+        setModalInitialCategory(targetCat);
         if (openModalParam === 'true' || params.has('category')) {
           setIsAssetModalOpen(true);
         }
@@ -378,7 +415,8 @@ export default function FloorTrackerPage() {
       UTILITY: 0,
     };
     machines.forEach((m) => {
-      const cat = m.category || 'MACHINE';
+      let cat = m.category || 'MACHINE';
+      if (cat === 'LIGHT' || cat === 'FAN') cat = 'UTILITY';
       counts[cat] = (counts[cat] || 0) + 1;
     });
     return counts;
@@ -394,7 +432,8 @@ export default function FloorTrackerPage() {
       UTILITY: 0,
     };
     machines.forEach((m) => {
-      const cat = m.category || 'MACHINE';
+      let cat = m.category || 'MACHINE';
+      if (cat === 'LIGHT' || cat === 'FAN') cat = 'UTILITY';
       vals[cat] = (vals[cat] || 0) + (m.cost || 0);
     });
     return vals;
@@ -414,8 +453,13 @@ export default function FloorTrackerPage() {
   const filteredAssets = useMemo(() => {
     return machines.filter((m) => {
       // Category filter
-      if (activeCategory !== 'ALL' && (m.category || 'MACHINE') !== activeCategory) {
-        return false;
+      if (activeCategory !== 'ALL') {
+        const cat = m.category || 'MACHINE';
+        if (activeCategory === 'UTILITY') {
+          if (cat !== 'UTILITY' && cat !== 'LIGHT' && cat !== 'FAN') return false;
+        } else if (cat !== activeCategory) {
+          return false;
+        }
       }
       // Department filter
       const dept = getAssetDepartment(m);
@@ -481,9 +525,19 @@ export default function FloorTrackerPage() {
       const cat = m.category || 'MACHINE';
       if (cat === 'TABLE') map[key].table = m;
       else if (cat === 'CHAIR') map[key].chair = m;
-      else if (cat === 'LIGHT') map[key].light = m;
-      else if (cat === 'FAN') map[key].fan = m;
-      else if (cat === 'MACHINE') map[key].machine = m;
+      else if (
+        cat === 'LIGHT' ||
+        (cat === 'UTILITY' && (m.type?.startsWith('LIGHT') || m.id?.startsWith('LGT')))
+      ) {
+        map[key].light = m;
+      } else if (
+        cat === 'FAN' ||
+        (cat === 'UTILITY' && (m.type?.startsWith('FAN') || m.id?.startsWith('FAN')))
+      ) {
+        map[key].fan = m;
+      } else if (cat === 'MACHINE') {
+        map[key].machine = m;
+      }
     });
 
     return Object.values(map);
@@ -494,11 +548,44 @@ export default function FloorTrackerPage() {
     setIsMoveModalOpen(true);
   };
 
+  const handleUtilitySubtypeChangeInForm = (sub: 'PLANT' | 'LIGHT' | 'FAN') => {
+    setNewUtilitySubtype(sub);
+    const rnd = Math.floor(100 + Math.random() * 900);
+    if (sub === 'LIGHT') {
+      setNewId(`LGT-HBY-${rnd}`);
+      setNewBrand('Philips');
+      setNewModel('CoreLine-150W');
+      setNewCost(130);
+      setNewDepartment('Cutting Department');
+      setNewLine('Cutting Department');
+      setNewStation('Overhead Spreading Bay');
+      setNewSpecs('150W Linear High-Bay LED, 6500K Cool Daylight, IP65');
+    } else if (sub === 'FAN') {
+      setNewId(`FAN-IND-${rnd}`);
+      setNewBrand('Almonard');
+      setNewModel('HeavyBlower-30');
+      setNewCost(135);
+      setNewDepartment('Finishing & Pressing');
+      setNewLine('Finishing & Pressing');
+      setNewStation('Pressing Line A');
+      setNewSpecs('30-inch industrial blade, 18,000 CFM rapid steam and heat dispersion');
+    } else {
+      setNewId(`UTL-SYS-${rnd}`);
+      setNewBrand('Atlas Copco');
+      setNewModel('G-11-FF');
+      setNewCost(3200);
+      setNewDepartment('Central Utilities & Plant');
+      setNewLine('Central Utilities & Plant');
+      setNewStation('Compressor Room');
+      setNewSpecs('11 kW 10 bar continuous compressed air for pneumatic tools');
+    }
+  };
+
   const handleCategoryChangeInForm = (cat: AssetCategory) => {
-    setNewCategory(cat);
     const rnd = Math.floor(100 + Math.random() * 900);
     switch (cat) {
       case 'TABLE':
+        setNewCategory('TABLE');
         setNewId(`TBL-CUT-${rnd}`);
         setNewBrand('Eastman');
         setNewModel('SpreadMaster-12');
@@ -509,6 +596,7 @@ export default function FloorTrackerPage() {
         setNewSpecs('Air flotation laminated top with metric measuring rule');
         break;
       case 'CHAIR':
+        setNewCategory('CHAIR');
         setNewId(`CHR-ERG-${rnd}`);
         setNewBrand('Featherlite');
         setNewModel('Optima-Sew360');
@@ -518,38 +606,17 @@ export default function FloorTrackerPage() {
         setNewStation('Station 04');
         setNewSpecs('Ergonomic gas-lift pneumatic swivel chair with lumbar support');
         break;
-      case 'LIGHT':
-        setNewId(`LGT-HBY-${rnd}`);
-        setNewBrand('Philips');
-        setNewModel('CoreLine-150W');
-        setNewCost(130);
-        setNewDepartment('Cutting Department');
-        setNewLine('Cutting Department');
-        setNewStation('Overhead Spreading Bay');
-        setNewSpecs('150W Linear High-Bay LED, 6500K Cool Daylight, IP65');
-        break;
-      case 'FAN':
-        setNewId(`FAN-IND-${rnd}`);
-        setNewBrand('Almonard');
-        setNewModel('HeavyBlower-30');
-        setNewCost(135);
-        setNewDepartment('Finishing & Pressing');
-        setNewLine('Finishing & Pressing');
-        setNewStation('Pressing Line A');
-        setNewSpecs('30-inch industrial blade, 18,000 CFM rapid steam and heat dispersion');
-        break;
       case 'UTILITY':
-        setNewId(`UTL-SYS-${rnd}`);
-        setNewBrand('Atlas Copco');
-        setNewModel('G-11-FF');
-        setNewCost(3200);
-        setNewDepartment('Central Utilities & Plant');
-        setNewLine('Central Utilities & Plant');
-        setNewStation('Compressor Room');
-        setNewSpecs('11 kW 10 bar continuous compressed air for pneumatic tools');
+      case 'LIGHT':
+      case 'FAN':
+        setNewCategory('UTILITY');
+        if (cat === 'LIGHT') handleUtilitySubtypeChangeInForm('LIGHT');
+        else if (cat === 'FAN') handleUtilitySubtypeChangeInForm('FAN');
+        else handleUtilitySubtypeChangeInForm(newUtilitySubtype);
         break;
       case 'MACHINE':
       default:
+        setNewCategory('MACHINE');
         setNewMachineCat('OVERLOCK');
         setNewMachineType('OVERLOCK_4_THREAD');
         setNewId(`MC-OVK-4TH-${rnd}`);
@@ -623,9 +690,27 @@ export default function FloorTrackerPage() {
       UTILITY: 'UTILITY_BOILER',
     };
 
-    const targetType = newCategory === 'MACHINE' ? newMachineType : typeMapping[newCategory];
+    const targetType =
+      newCategory === 'MACHINE'
+        ? newMachineType
+        : newCategory === 'UTILITY'
+        ? newUtilitySubtype === 'LIGHT'
+          ? 'LIGHT_HIGHBAY'
+          : newUtilitySubtype === 'FAN'
+          ? 'FAN_CEILING'
+          : 'UTILITY_BOILER'
+        : typeMapping[newCategory];
+
     const subMeta = newCategory === 'MACHINE' ? SUBTYPE_LOOKUP[newMachineType] : undefined;
-    const targetTypeName = subMeta ? subMeta.name : `${newBrand} ${getCategoryMeta(newCategory).label}`;
+    const targetTypeName = subMeta
+      ? subMeta.name
+      : newCategory === 'UTILITY'
+      ? newUtilitySubtype === 'LIGHT'
+        ? `${newBrand} Overhead High-Bay LED`
+        : newUtilitySubtype === 'FAN'
+        ? `${newBrand} Industrial Ventilation Fan`
+        : `${newBrand} Central Plant Utility`
+      : `${newBrand} ${getCategoryMeta(newCategory).label}`;
 
     const newAsset: Machine = {
       id: newId.trim().toUpperCase(),
@@ -840,8 +925,8 @@ export default function FloorTrackerPage() {
           </div>
         </div>
 
-        {/* Right: 6 Category Cards in a Sleek Minimalist Grid */}
-        <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {/* Right: 4 Category Cards in a Sleek Minimalist Grid */}
+        <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
           {/* 1. Machinery */}
           <div
             onClick={() => handleOpenAssetModal(undefined, 'MACHINE')}
@@ -923,68 +1008,14 @@ export default function FloorTrackerPage() {
             </div>
           </div>
 
-          {/* 4. Lighting */}
-          <div
-            onClick={() => handleOpenAssetModal(undefined, 'LIGHT')}
-            className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-xs hover:border-yellow-400 hover:shadow-sm transition cursor-pointer flex flex-col justify-between group"
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">Lighting</span>
-                <div className="w-7 h-7 rounded-xl bg-yellow-50 text-yellow-600 flex items-center justify-center group-hover:scale-105 transition">
-                  <Lightbulb className="w-3.5 h-3.5" />
-                </div>
-              </div>
-              <div className="text-2xl font-black text-slate-900 font-mono mt-1">
-                {categoryCounts.LIGHT || 0}
-              </div>
-              <div className="text-xs font-semibold text-yellow-700 font-mono">
-                ${(categoryValuations.LIGHT || 0).toLocaleString()}
-              </div>
-            </div>
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-              <span>High-Bay & Task</span>
-              <span className="text-yellow-700 font-bold group-hover:translate-x-0.5 transition flex items-center">
-                Specs <ChevronRight className="w-3 h-3" />
-              </span>
-            </div>
-          </div>
-
-          {/* 5. Fans & HVAC */}
-          <div
-            onClick={() => handleOpenAssetModal(undefined, 'FAN')}
-            className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-xs hover:border-cyan-400 hover:shadow-sm transition cursor-pointer flex flex-col justify-between group"
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">Fans & Vent</span>
-                <div className="w-7 h-7 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center group-hover:scale-105 transition">
-                  <Fan className="w-3.5 h-3.5" />
-                </div>
-              </div>
-              <div className="text-2xl font-black text-slate-900 font-mono mt-1">
-                {categoryCounts.FAN || 0}
-              </div>
-              <div className="text-xs font-semibold text-cyan-600 font-mono">
-                ${(categoryValuations.FAN || 0).toLocaleString()}
-              </div>
-            </div>
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-              <span>Industrial Blowers</span>
-              <span className="text-cyan-600 font-bold group-hover:translate-x-0.5 transition flex items-center">
-                Specs <ChevronRight className="w-3 h-3" />
-              </span>
-            </div>
-          </div>
-
-          {/* 6. Central Utilities */}
+          {/* 4. Utilities, Lighting & Fans */}
           <div
             onClick={() => handleOpenAssetModal(undefined, 'UTILITY')}
             className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-xs hover:border-purple-400 hover:shadow-sm transition cursor-pointer flex flex-col justify-between group"
           >
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">Plant Utilities</span>
+                <span className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">Utilities & Plant</span>
                 <div className="w-7 h-7 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-105 transition">
                   <Flame className="w-3.5 h-3.5" />
                 </div>
@@ -997,7 +1028,7 @@ export default function FloorTrackerPage() {
               </div>
             </div>
             <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-              <span>Boilers & Gensets</span>
+              <span>Power, Light & Vent</span>
               <span className="text-purple-600 font-bold group-hover:translate-x-0.5 transition flex items-center">
                 Specs <ChevronRight className="w-3 h-3" />
               </span>
@@ -1058,9 +1089,7 @@ export default function FloorTrackerPage() {
               <option value="MACHINE">Machinery ({categoryCounts.MACHINE || 0})</option>
               <option value="TABLE">Work Tables ({categoryCounts.TABLE || 0})</option>
               <option value="CHAIR">Chairs ({categoryCounts.CHAIR || 0})</option>
-              <option value="LIGHT">Lighting ({categoryCounts.LIGHT || 0})</option>
-              <option value="FAN">Fans ({categoryCounts.FAN || 0})</option>
-              <option value="UTILITY">Utilities ({categoryCounts.UTILITY || 0})</option>
+              <option value="UTILITY">Utilities & Facilities ({categoryCounts.UTILITY || 0})</option>
             </select>
             <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-3 text-slate-400 pointer-events-none" />
           </div>
@@ -1583,13 +1612,11 @@ export default function FloorTrackerPage() {
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Asset Category *
                 </label>
-                <div className="grid grid-cols-3 gap-1.5 text-xs font-semibold">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs font-semibold">
                   {[
                     { id: 'MACHINE', label: 'Machinery', icon: Wrench },
                     { id: 'TABLE', label: 'Work Table', icon: LayoutGrid },
                     { id: 'CHAIR', label: 'Chair / Seat', icon: Armchair },
-                    { id: 'LIGHT', label: 'Lighting', icon: Lightbulb },
-                    { id: 'FAN', label: 'Fan / Vent', icon: Fan },
                     { id: 'UTILITY', label: 'Plant Utility', icon: Flame },
                   ].map((cat) => {
                     const CatIcon = cat.icon;
@@ -1612,6 +1639,40 @@ export default function FloorTrackerPage() {
                   })}
                 </div>
               </div>
+
+              {/* Utility Sub-Category Selector */}
+              {newCategory === 'UTILITY' && (
+                <div className="bg-purple-50/60 p-3 rounded-2xl border border-purple-200 space-y-2">
+                  <label className="block text-[11px] font-bold text-purple-900 uppercase tracking-wider">
+                    Utility Equipment Type *
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5 text-xs font-semibold">
+                    {[
+                      { id: 'PLANT', label: 'Power & Steam', icon: Flame },
+                      { id: 'LIGHT', label: 'Lighting Fixture', icon: Lightbulb },
+                      { id: 'FAN', label: 'Ventilation Fan', icon: Fan },
+                    ].map((sub) => {
+                      const SubIcon = sub.icon;
+                      const isSelected = newUtilitySubtype === sub.id;
+                      return (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          onClick={() => handleUtilitySubtypeChangeInForm(sub.id as any)}
+                          className={`p-2 rounded-xl border transition flex items-center gap-1.5 justify-center cursor-pointer ${
+                            isSelected
+                              ? 'bg-purple-600 text-white border-purple-600 font-bold shadow-xs'
+                              : 'bg-white text-slate-700 border-purple-200 hover:bg-purple-100/50'
+                          }`}
+                        >
+                          <SubIcon className="w-3.5 h-3.5" />
+                          <span>{sub.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Department Selector */}
               <div>

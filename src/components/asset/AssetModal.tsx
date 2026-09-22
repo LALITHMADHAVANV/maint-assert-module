@@ -50,7 +50,7 @@ interface CategoryStyle {
   activeBtn: string;
 }
 
-export function getCategoryStyle(category?: AssetCategory): CategoryStyle {
+export function getCategoryStyle(category?: AssetCategory, asset?: Machine): CategoryStyle {
   switch (category) {
     case 'TABLE':
       return {
@@ -96,10 +96,42 @@ export function getCategoryStyle(category?: AssetCategory): CategoryStyle {
         dot: 'bg-cyan-500',
         activeBtn: 'bg-cyan-600 text-white shadow-xs',
       };
-    case 'UTILITY':
+    case 'UTILITY': {
+      const isLight =
+        asset?.type?.startsWith('LIGHT') ||
+        asset?.id?.startsWith('LGT') ||
+        asset?.category === 'LIGHT';
+      const isFan =
+        asset?.type?.startsWith('FAN') ||
+        asset?.id?.startsWith('FAN') ||
+        asset?.category === 'FAN';
+      if (isLight) {
+        return {
+          label: 'Lighting Fixture (Utility)',
+          plural: 'Utilities, Light & Vent',
+          icon: Lightbulb,
+          color: 'text-yellow-800 bg-yellow-50',
+          badge: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+          border: 'border-yellow-200',
+          dot: 'bg-yellow-500',
+          activeBtn: 'bg-yellow-600 text-white shadow-xs',
+        };
+      }
+      if (isFan) {
+        return {
+          label: 'Ventilation Fan (Utility)',
+          plural: 'Utilities, Light & Vent',
+          icon: Fan,
+          color: 'text-cyan-800 bg-cyan-50',
+          badge: 'bg-cyan-100 text-cyan-800 border-cyan-300',
+          border: 'border-cyan-200',
+          dot: 'bg-cyan-500',
+          activeBtn: 'bg-cyan-600 text-white shadow-xs',
+        };
+      }
       return {
         label: 'Plant Utility',
-        plural: 'Utilities & Plant',
+        plural: 'Utilities, Light & Vent',
         icon: Flame,
         color: 'text-purple-800 bg-purple-50',
         badge: 'bg-purple-100 text-purple-800 border-purple-300',
@@ -107,6 +139,7 @@ export function getCategoryStyle(category?: AssetCategory): CategoryStyle {
         dot: 'bg-purple-500',
         activeBtn: 'bg-purple-600 text-white shadow-xs',
       };
+    }
     case 'MACHINE':
     default:
       return {
@@ -162,7 +195,39 @@ function getAssetCategorySpecs(asset: Machine): Record<string, string> {
         'Operating Velocity': '320 RPM peak at maximum speed',
         'Safety Feature': 'Secondary fall-prevention braided steel safety tether',
       };
-    case 'UTILITY':
+    case 'UTILITY': {
+      const isLight =
+        asset.type?.startsWith('LIGHT') ||
+        asset.id?.startsWith('LGT') ||
+        asset.model?.includes('LED') ||
+        asset.category === 'LIGHT';
+      const isFan =
+        asset.type?.startsWith('FAN') ||
+        asset.id?.startsWith('FAN') ||
+        asset.model?.includes('Fan') ||
+        asset.model?.includes('Blower') ||
+        asset.category === 'FAN';
+
+      if (isLight) {
+        return {
+          'Luminous Output': '18,000 Lumens (High-Bay) / 850 Lumens (Needle Task)',
+          'Illuminance Target': '1,200 Lux directly at operator needle plate',
+          'Color Temperature': '6500K Cool Daylight (Inspection grade)',
+          'Color Rendering Index': 'CRI > 90 Ra (Garment shade & dye matching)',
+          'Ingress Protection': 'IP65 dust-tight & moisture protected housing',
+          'Optics / Diffuser': 'Micro-prismatic anti-glare polycarbonate optical lens',
+        };
+      }
+      if (isFan) {
+        return {
+          'Blade Span / Sweep': '56 inches (1400 mm) Aerodynamic aluminum blades',
+          'Air Delivery Rating': '270 m³/min (9,500 CFM high velocity airflow)',
+          'Motor Specification': 'Double ball bearing 100% copper wound 75W motor',
+          'Speed Regulation': '5-step electronic micro-stepped line regulator',
+          'Operating Velocity': '320 RPM peak at maximum speed',
+          'Safety Feature': 'Secondary fall-prevention braided steel safety tether',
+        };
+      }
       return {
         'Working Pressure': '4.5 to 7.0 Bar (65 to 100 PSI regulated)',
         'Output Capacity': 'Central steam dry vapor generation / 45 CFM compressed air',
@@ -171,6 +236,7 @@ function getAssetCategorySpecs(asset: Machine): Record<string, string> {
         'Water Treatment': 'Integrated cation ion-exchange water softening bed',
         'Shutoff Control': 'Quarter-turn emergency isolation ball valve with lockout tag',
       };
+    }
     case 'MACHINE':
     default: {
       const machineCat = asset.machineClass || getCategoryForType(asset.type);
@@ -247,12 +313,36 @@ function getCategorySOP(category?: AssetCategory, asset?: Machine): string[] {
         'Turn off fan before cleaning blades to avoid motor imbalance or mechanical obstruction.',
         'Verify that the secondary safety drop-cable is anchored to the structural plant truss.',
       ];
-    case 'UTILITY':
+    case 'UTILITY': {
+      const isLight =
+        asset?.type?.startsWith('LIGHT') ||
+        asset?.id?.startsWith('LGT') ||
+        asset?.category === 'LIGHT';
+      const isFan =
+        asset?.type?.startsWith('FAN') ||
+        asset?.id?.startsWith('FAN') ||
+        asset?.category === 'FAN';
+
+      if (isLight) {
+        return [
+          'Inspect task light gooseneck position to illuminate needle plate without casting shadows or glare.',
+          'Keep optical diffuser clean and free from lint buildup to sustain 1,000+ Lux illumination standard.',
+          'Report any light flicker or ballast hum immediately to prevent technician eye strain and headache.',
+        ];
+      }
+      if (isFan) {
+        return [
+          'Ensure minimum overhead ceiling clearance of 2.7 meters above sewing operator floor level.',
+          'Turn off fan before cleaning blades to avoid motor imbalance or mechanical obstruction.',
+          'Verify that the secondary safety drop-cable is anchored to the structural plant truss.',
+        ];
+      }
       return [
         'Perform daily morning boiler sludge blowdown before opening steam main valve to the iron line.',
         'Inspect air compressor pressure gauge sight glasses and verify condensate auto-drain functions.',
         'Never tamper with or override ASME certified pressure relief safety valves.',
       ];
+    }
     case 'MACHINE':
     default: {
       const machineCat = asset ? asset.machineClass || getCategoryForType(asset.type) : 'OVERLOCK';
@@ -305,12 +395,36 @@ function getCategoryChecklist(category?: AssetCategory, asset?: Machine): string
         'Weekly: Wipe fan blades to remove accumulated garment dust and maintain dynamic balance.',
         'Monthly: Inspect regulator switch box, capacitor, and secondary steel safety tether tension.',
       ];
-    case 'UTILITY':
+    case 'UTILITY': {
+      const isLight =
+        asset?.type?.startsWith('LIGHT') ||
+        asset?.id?.startsWith('LGT') ||
+        asset?.category === 'LIGHT';
+      const isFan =
+        asset?.type?.startsWith('FAN') ||
+        asset?.id?.startsWith('FAN') ||
+        asset?.category === 'FAN';
+
+      if (isLight) {
+        return [
+          'Daily: Visual check of LED light output and task gooseneck fixture stability.',
+          'Weekly: Wipe exterior diffuser with dry microfiber cloth to remove cotton fly.',
+          'Monthly: Perform Lux meter audit on workstation needle plate (Target: 1,000 to 1,200 Lux).',
+        ];
+      }
+      if (isFan) {
+        return [
+          'Daily: Observe smooth rotation with no bearing wobble, rattle, or vibration.',
+          'Weekly: Wipe fan blades to remove accumulated garment dust and maintain dynamic balance.',
+          'Monthly: Inspect regulator switch box, capacitor, and secondary steel safety tether tension.',
+        ];
+      }
       return [
         'Daily: Check steam operating pressure (4.5 to 6.0 Bar) and water level sight tube.',
         'Weekly: Manual pop-test of pressure safety relief valve to prevent valve seat seizure.',
         'Monthly: Replace compressed air intake filter cartridge; inspect plant steam pipe lagging.',
       ];
+    }
     case 'MACHINE':
     default: {
       const machineCat = asset ? asset.machineClass || getCategoryForType(asset.type) : 'OVERLOCK';
@@ -347,9 +461,12 @@ export function AssetModal({
   const { showToast } = useToast();
   const { user } = useAuth();
 
-  const [activeCategory, setActiveCategory] = useState<AssetCategory>(
-    asset?.category || initialCategory
-  );
+  const [activeCategory, setActiveCategory] = useState<AssetCategory>(() => {
+    let cat = asset?.category || initialCategory;
+    if (cat === 'LIGHT' || cat === 'FAN') cat = 'UTILITY';
+    return cat;
+  });
+  const [utilityFilter, setUtilityFilter] = useState<'ALL' | 'PLANT' | 'LIGHT' | 'FAN'>('ALL');
   const [selectedAssetId, setSelectedAssetId] = useState<string>(
     asset?.id || ''
   );
@@ -370,13 +487,21 @@ export function AssetModal({
   // Sync state on open
   useEffect(() => {
     if (isOpen) {
+      setUtilityFilter('ALL');
       if (asset) {
         setSelectedAssetId(asset.id);
-        setActiveCategory(asset.category || 'MACHINE');
+        const cat = asset.category || 'MACHINE';
+        setActiveCategory(cat === 'LIGHT' || cat === 'FAN' ? 'UTILITY' : cat);
       } else {
-        const cat = initialCategory || 'MACHINE';
+        let cat = initialCategory || 'MACHINE';
+        if (cat === 'LIGHT' || cat === 'FAN') cat = 'UTILITY';
         setActiveCategory(cat);
-        const match = allAssets.find((m) => m.category === cat);
+        const match = allAssets.find((m) => {
+          const mCat = m.category || 'MACHINE';
+          return cat === 'UTILITY'
+            ? mCat === 'UTILITY' || mCat === 'LIGHT' || mCat === 'FAN'
+            : mCat === cat;
+        });
         if (match) setSelectedAssetId(match.id);
       }
       setActiveTab('DETAILS');
@@ -385,21 +510,41 @@ export function AssetModal({
 
   // Assets in current active category
   const categoryAssets = useMemo(() => {
+    if (activeCategory === 'UTILITY') {
+      return allAssets.filter((m) => {
+        const cat = m.category || 'MACHINE';
+        return cat === 'UTILITY' || cat === 'LIGHT' || cat === 'FAN';
+      });
+    }
     return allAssets.filter((m) => (m.category || 'MACHINE') === activeCategory);
   }, [allAssets, activeCategory]);
 
-  // Filtered by search if any
+  // Filtered by search & utility sub-filter if any
   const filteredCategoryAssets = useMemo(() => {
-    if (!searchQuery.trim()) return categoryAssets;
+    let list = categoryAssets;
+    if (activeCategory === 'UTILITY' && utilityFilter !== 'ALL') {
+      list = list.filter((m) => {
+        const isLight =
+          m.type?.startsWith('LIGHT') || m.id?.startsWith('LGT') || m.category === 'LIGHT';
+        const isFan =
+          m.type?.startsWith('FAN') || m.id?.startsWith('FAN') || m.category === 'FAN';
+        if (utilityFilter === 'LIGHT') return isLight;
+        if (utilityFilter === 'FAN') return isFan;
+        if (utilityFilter === 'PLANT') return !isLight && !isFan;
+        return true;
+      });
+    }
+    if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase();
-    return categoryAssets.filter((m) =>
-      m.id.toLowerCase().includes(q) ||
-      (m.name || '').toLowerCase().includes(q) ||
-      (m.brand || '').toLowerCase().includes(q) ||
-      (m.stationNo || '').toLowerCase().includes(q) ||
-      (m.currentLine || '').toLowerCase().includes(q)
+    return list.filter(
+      (m) =>
+        m.id.toLowerCase().includes(q) ||
+        (m.name || '').toLowerCase().includes(q) ||
+        (m.brand || '').toLowerCase().includes(q) ||
+        (m.stationNo || '').toLowerCase().includes(q) ||
+        (m.currentLine || '').toLowerCase().includes(q)
     );
-  }, [categoryAssets, searchQuery]);
+  }, [categoryAssets, searchQuery, activeCategory, utilityFilter]);
 
   // Active Asset
   const currentAsset: Machine | undefined = useMemo(() => {
@@ -414,7 +559,7 @@ export function AssetModal({
   if (!isOpen || !currentAsset) return null;
 
   const currentCat = currentAsset.category || activeCategory || 'MACHINE';
-  const catStyle = getCategoryStyle(currentCat);
+  const catStyle = getCategoryStyle(currentCat, currentAsset);
   const CatIcon = catStyle.icon;
 
   const specs = getAssetCategorySpecs(currentAsset);
@@ -607,42 +752,14 @@ export function AssetModal({
             <button
               type="button"
               onClick={() => {
-                setActiveCategory('LIGHT');
-                const first = allAssets.find((m) => m.category === 'LIGHT');
-                if (first) setSelectedAssetId(first.id);
-              }}
-              className={`px-2.5 py-1.5 rounded-xl border transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                activeCategory === 'LIGHT'
-                  ? 'bg-yellow-600 text-white border-yellow-600 shadow-xs'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <Lightbulb className="w-3.5 h-3.5" />
-              <span>Lighting</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveCategory('FAN');
-                const first = allAssets.find((m) => m.category === 'FAN');
-                if (first) setSelectedAssetId(first.id);
-              }}
-              className={`px-2.5 py-1.5 rounded-xl border transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                activeCategory === 'FAN'
-                  ? 'bg-cyan-600 text-white border-cyan-600 shadow-xs'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <Fan className="w-3.5 h-3.5" />
-              <span>Fans</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
                 setActiveCategory('UTILITY');
-                const first = allAssets.find((m) => m.category === 'UTILITY');
+                setUtilityFilter('ALL');
+                const first = allAssets.find(
+                  (m) =>
+                    (m.category || 'MACHINE') === 'UTILITY' ||
+                    m.category === 'LIGHT' ||
+                    m.category === 'FAN'
+                );
                 if (first) setSelectedAssetId(first.id);
               }}
               className={`px-2.5 py-1.5 rounded-xl border transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
@@ -652,7 +769,7 @@ export function AssetModal({
               }`}
             >
               <Flame className="w-3.5 h-3.5" />
-              <span>Utilities</span>
+              <span>Utilities & Plant</span>
             </button>
           </div>
 
@@ -671,9 +788,92 @@ export function AssetModal({
 
         {/* Category Assets Picker Strip */}
         <div className="px-4 py-2 bg-slate-100/70 border-b border-slate-200 overflow-x-auto flex items-center gap-2 shrink-0 scrollbar-none">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
-            {catStyle.plural} ({filteredCategoryAssets.length}):
-          </span>
+          {activeCategory === 'UTILITY' ? (
+            <div className="flex items-center gap-1 shrink-0 pr-2 mr-1 border-r border-slate-300">
+              <span className="text-[10px] font-black text-purple-800 uppercase tracking-wider mr-1">
+                Filter:
+              </span>
+              <button
+                type="button"
+                onClick={() => setUtilityFilter('ALL')}
+                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                  utilityFilter === 'ALL'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                All ({categoryAssets.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setUtilityFilter('PLANT')}
+                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                  utilityFilter === 'PLANT'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <Flame className="w-3 h-3 text-purple-500" />
+                Power & Steam (
+                {
+                  categoryAssets.filter(
+                    (m) =>
+                      !m.type?.startsWith('LIGHT') &&
+                      !m.type?.startsWith('FAN') &&
+                      !m.id?.startsWith('LGT') &&
+                      !m.id?.startsWith('FAN')
+                  ).length
+                }
+                )
+              </button>
+              <button
+                type="button"
+                onClick={() => setUtilityFilter('LIGHT')}
+                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                  utilityFilter === 'LIGHT'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <Lightbulb className="w-3 h-3 text-amber-500" />
+                Lighting (
+                {
+                  categoryAssets.filter(
+                    (m) =>
+                      m.type?.startsWith('LIGHT') ||
+                      m.id?.startsWith('LGT') ||
+                      m.category === 'LIGHT'
+                  ).length
+                }
+                )
+              </button>
+              <button
+                type="button"
+                onClick={() => setUtilityFilter('FAN')}
+                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                  utilityFilter === 'FAN'
+                    ? 'bg-cyan-600 text-white shadow-xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <Fan className="w-3 h-3 text-cyan-500" />
+                Fans & Vent (
+                {
+                  categoryAssets.filter(
+                    (m) =>
+                      m.type?.startsWith('FAN') ||
+                      m.id?.startsWith('FAN') ||
+                      m.category === 'FAN'
+                  ).length
+                }
+                )
+              </button>
+            </div>
+          ) : (
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
+              {catStyle.plural} ({filteredCategoryAssets.length}):
+            </span>
+          )}
           {filteredCategoryAssets.length === 0 ? (
             <span className="text-xs text-slate-400 italic">No assets found</span>
           ) : (

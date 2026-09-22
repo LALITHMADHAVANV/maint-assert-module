@@ -2,9 +2,9 @@ export type AssetCategory =
   | 'MACHINE' // Sewing & Industrial Machinery
   | 'TABLE' // Work, Cutting, Inspection & Packing Tables
   | 'CHAIR' // Operator, Supervisor & Mechanic Seating
-  | 'LIGHT' // High-Bay, Task & Inspection Lights
-  | 'FAN' // Industrial Ceiling, Exhaust & Pedestal Fans
-  | 'UTILITY'; // Steam Boilers, Air Compressors, Fire Safety
+  | 'UTILITY' // Central Utilities, Lighting Fixtures & Ventilation Fans
+  | 'LIGHT' // Legacy alias under UTILITY
+  | 'FAN'; // Legacy alias under UTILITY
 
 export type MachineType =
   // 1. Overlock (Yamato, Supreme)

@@ -272,7 +272,7 @@ export function ScanModal({
                         Seat Foam Compressed / Fabric Torn
                       </option>
                     </>
-                  ) : currentMachine?.category === 'LIGHT' ? (
+                  ) : currentMachine?.category === 'LIGHT' || currentMachine?.type?.startsWith('LIGHT') || currentMachine?.id?.startsWith('LGT') ? (
                     <>
                       <option value="Overhead LED Driver Ballast Flickering">
                         Overhead LED Driver Ballast Flickering
@@ -287,7 +287,7 @@ export function ScanModal({
                         Diffuser Shield Cracked / High Glare
                       </option>
                     </>
-                  ) : currentMachine?.category === 'FAN' ? (
+                  ) : currentMachine?.category === 'FAN' || currentMachine?.type?.startsWith('FAN') || currentMachine?.id?.startsWith('FAN') ? (
                     <>
                       <option value="Ceiling Downrod Vibration / Blade Angle Imbalance">
                         Ceiling Downrod Vibration / Blade Angle Imbalance
