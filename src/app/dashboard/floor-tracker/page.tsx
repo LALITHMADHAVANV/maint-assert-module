@@ -554,6 +554,78 @@ export default function FloorTrackerPage() {
         </div>
       </div>
 
+      {/* 🚀 Dedicated Asset Types & Specifications Directory Quick Portal */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4 sm:p-5 rounded-3xl border border-indigo-900/50 shadow-md">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="p-1 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-400/30">
+                <SlidersHorizontal className="w-4 h-4" />
+              </span>
+              <h3 className="font-extrabold text-sm sm:text-base tracking-tight text-white">
+                Inspect Asset Types & Engineering Specifications
+              </h3>
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                SOP & Standards
+              </span>
+            </div>
+            <p className="text-xs text-indigo-200/80 mt-1 max-w-2xl">
+              Inspect detailed machine models, table dimensions, chair ergonomic adjustments, lighting Lux ratings, fan airflows, and utility operating checklists across all 6 factory categories:
+            </p>
+          </div>
+
+          <div className="flex items-center flex-wrap gap-2">
+            <Link
+              href="/dashboard/asset-types?category=MACHINE"
+              className="text-xs font-semibold px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 shadow-sm"
+            >
+              <Wrench className="w-3.5 h-3.5" />
+              <span>Machine Types →</span>
+            </Link>
+
+            <Link
+              href="/dashboard/asset-types?category=TABLE"
+              className="text-xs font-semibold px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white transition flex items-center gap-1.5 shadow-sm"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Table Types →</span>
+            </Link>
+
+            <Link
+              href="/dashboard/asset-types?category=CHAIR"
+              className="text-xs font-semibold px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white transition flex items-center gap-1.5 shadow-sm"
+            >
+              <Armchair className="w-3.5 h-3.5" />
+              <span>Chair Types →</span>
+            </Link>
+
+            <Link
+              href="/dashboard/asset-types?category=LIGHT"
+              className="text-xs font-semibold px-3 py-2 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-white transition flex items-center gap-1.5 shadow-sm"
+            >
+              <Lightbulb className="w-3.5 h-3.5" />
+              <span>Lighting Types →</span>
+            </Link>
+
+            <Link
+              href="/dashboard/asset-types?category=FAN"
+              className="text-xs font-semibold px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white transition flex items-center gap-1.5 shadow-sm"
+            >
+              <Fan className="w-3.5 h-3.5" />
+              <span>Fan Types →</span>
+            </Link>
+
+            <Link
+              href="/dashboard/asset-types?category=UTILITY"
+              className="text-xs font-semibold px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white transition flex items-center gap-1.5 shadow-sm"
+            >
+              <Flame className="w-3.5 h-3.5" />
+              <span>Utility Types →</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+
       {/* Control Bar: Categories Filter, Search & View Switcher */}
       <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
@@ -864,6 +936,14 @@ export default function FloorTrackerPage() {
                                   {m.stationNo}
                                 </span>
                                 <div className="flex items-center gap-2">
+                                  <Link
+                                    href={`/dashboard/asset-types?category=${m.category || 'MACHINE'}&type=${m.type}`}
+                                    className="text-slate-500 hover:text-indigo-600 font-semibold flex items-center gap-0.5 transition"
+                                    title="Inspect technical specifications, SOP, and checklists for this type"
+                                  >
+                                    <span>Specs</span>
+                                  </Link>
+                                  <span className="text-slate-300">•</span>
                                   <span className="font-mono text-slate-400">${m.cost || 0}</span>
                                   <button
                                     type="button"
