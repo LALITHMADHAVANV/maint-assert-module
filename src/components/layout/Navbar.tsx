@@ -247,7 +247,7 @@ export function Navbar() {
         highlight: true,
       },
       {
-        label: '🏭 Factory Assets',
+        label: 'Factory Assets',
         href: '/dashboard/floor-tracker',
         icon: Layers,
       },
@@ -256,50 +256,50 @@ export function Navbar() {
     // 🛡️ PLANT ADMIN / ASSET MANAGER: Master oversight across operational modules
     navTabs = [
       {
-        label: '1. Machine Entry & QR',
+        label: 'Factory Assets',
+        href: '/dashboard/floor-tracker',
+        icon: Layers,
+      },
+      {
+        label: 'Machines & QR',
         href: '/dashboard/machines',
         icon: QrCode,
       },
       {
-        label: '2. Spare Parts Crib',
+        label: 'Spare Parts Crib',
         href: '/dashboard/inventory',
         icon: Boxes,
         badge: lowStockCount > 0 ? lowStockCount : null,
         badgeColor: 'bg-rose-500 text-white',
       },
       {
-        label: '3. Machine History & PPM',
+        label: 'Maintenance History',
         href: '/dashboard/history',
         icon: History,
       },
       {
-        label: '4. Mechanic Calendar',
+        label: 'Mechanic Calendar',
         href: '/dashboard/calendar',
         icon: CalendarCheck,
         badge: pendingTicketsCount > 0 ? pendingTicketsCount : null,
         badgeColor: 'bg-amber-400 text-slate-950 font-extrabold',
       },
       {
-        label: '5. 🏭 Factory Assets',
-        href: '/dashboard/floor-tracker',
-        icon: Layers,
-      },
-      {
-        label: '👑 CEO Approvals',
+        label: 'CEO Approvals',
         href: '/dashboard/messages',
         icon: Crown,
         badge: pendingCeoCount > 0 ? pendingCeoCount : null,
         badgeColor: 'bg-rose-600 text-white',
       },
       {
-        label: '📦 Store Indents',
+        label: 'Store Indents',
         href: '/dashboard/store-inbox',
         icon: Package,
         badge: pendingStoreCount > 0 ? pendingStoreCount : null,
         badgeColor: 'bg-emerald-500 text-white',
       },
       {
-        label: '👥 Team Roster',
+        label: 'Team Roster',
         href: '/dashboard/mechanic-roster',
         icon: Users,
       },
