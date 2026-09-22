@@ -29,6 +29,7 @@ import { Machine, FloorLine, AssetCategory, MachineStatus, RepairUrgency } from 
 import { createBreakdownTicket, relocateMachine, updateMachineStatus } from '@/lib/services/cmmsService';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
+import { getCategoryForType, SUBTYPE_LOOKUP } from '@/lib/machineCatalog';
 
 interface AssetModalProps {
   isOpen: boolean;
@@ -171,19 +172,56 @@ function getAssetCategorySpecs(asset: Machine): Record<string, string> {
         'Shutoff Control': 'Quarter-turn emergency isolation ball valve with lockout tag',
       };
     case 'MACHINE':
-    default:
-      return {
-        'Max Sewing Speed': '5,000 RPM (High-speed precision seaming)',
-        'Motor System': 'Direct-drive integrated servo motor (550W energy saving)',
-        'Needle System': 'DBx1 / 16x231 (#09 to #18 fabric gauge)',
-        'Stitch Length': '0 to 5.0 mm micrometric rotary dial adjustment',
-        'Automatic Features': 'Under-bed thread trimmer (UTT), auto wiper, backtack',
-        'Lubrication': 'Fully sealed force-feed impeller oil circulation with sight glass',
-      };
+    default: {
+      const machineCat = asset.machineClass || getCategoryForType(asset.type);
+      if (machineCat === 'OVERLOCK') {
+        return {
+          'Machine Category': 'Overlock Machine (Edge Overedging & Trimming)',
+          'Permitted OEM Brands': 'Yamato, Supreme',
+          'Subtype Variety': asset.typeName || '4 Thread Overlock',
+          'Max Sewing Speed': '7,500 RPM (High-speed continuous seaming)',
+          'Stitch Formation': '2-Needle 4-Thread overedge / safety stitch',
+          'Differential Feed': 'Micro-dial adjustable ratio (1:0.7 stretching to 1:2.0 gathering)',
+          'Needle System': 'DCx27 / B27 (#09 to #14 knit gauge)',
+          'Lubrication': 'Centrifugal forced-feed oil pump with clear sight dome',
+          'Key Specification': asset.specs || 'High-speed edge overedging with auto-lubrication',
+        };
+      } else if (machineCat === 'FLATLOCK') {
+        return {
+          'Machine Category': 'Flatlock Machine (Interlock / Coverstitch)',
+          'Permitted OEM Brands': 'Yamato',
+          'Subtype Variety': asset.typeName || 'Hemming / Cylinder Bed Flatlock',
+          'Max Sewing Speed': '6,000 RPM (Interlock knit garment seaming)',
+          'Bed Architecture':
+            asset.type === 'FLATLOCK_SMALL_CYLINDER'
+              ? '180mm Mini Cylinder Bed (Cuffs & Ankles)'
+              : asset.type === 'FLATLOCK_CYLINDER_BED'
+              ? '280mm Cylinder Bed (Tubular Knits)'
+              : 'Flat Bed / Variable Top-Feed (VT)',
+          'Stitch Formation': '3-Needle 5-Thread top and bottom coverstitch',
+          'Needle System': 'UY128GAS (#09 to #14 stretch knit gauge)',
+          'Thread Trimmer': 'Pneumatic under-bed thread trimmer (UTT) / tape cutter',
+          'Key Specification': asset.specs || 'Tubular garment assembly with top coverstitch',
+        };
+      } else {
+        return {
+          'Machine Category': 'Single Needle Machine (Indexer / Tacker / Attacher)',
+          'Permitted OEM Brands': 'Brother, Supreme',
+          'Subtype Variety': asset.typeName || 'Brother KAJA / Button Stitch / Bartack',
+          'Max Cycle Speed': '3,200 to 4,200 SPM (Direct-drive servo)',
+          'Indexing & Drive': 'Direct-drive servo motor with digital pulse motor stepping',
+          'Stitch Patterns': '21 preset buttonhole eyelet cycles / 89 bartack patterns',
+          'Needle System': 'DPx5 / 134R (#11 to #18 fabric gauge)',
+          'Work Clamp': 'Electronic quick-change button clamp & indexer drop',
+          'Lubrication': 'Semi-dry / minimal lubrication head (anti-oil stain guarantee)',
+          'Key Specification': asset.specs || 'Electronic indexer, pulse motor knife drop',
+        };
+      }
+    }
   }
 }
 
-function getCategorySOP(category?: AssetCategory): string[] {
+function getCategorySOP(category?: AssetCategory, asset?: Machine): string[] {
   switch (category) {
     case 'TABLE':
       return [
@@ -216,16 +254,32 @@ function getCategorySOP(category?: AssetCategory): string[] {
         'Never tamper with or override ASME certified pressure relief safety valves.',
       ];
     case 'MACHINE':
-    default:
-      return [
-        'Perform 5-point safety check before power-up: needle guard, finger shield, and belt cover in place.',
-        'Check oil level in sight glass window; never run machine dry or with contaminated lubrication oil.',
-        'Always allow the feed dog to advance the fabric naturally; never force or pull fabric through seamer.',
-      ];
+    default: {
+      const machineCat = asset ? asset.machineClass || getCategoryForType(asset.type) : 'OVERLOCK';
+      if (machineCat === 'OVERLOCK') {
+        return [
+          'Verify looper-to-needle clearance (0.05 mm) and ensure trimming knife blade is sharp and nick-free.',
+          'Check oil flow in circular sight dome before operating high-speed 7,500 RPM cycle.',
+          'Ensure differential feed ratio is locked at the prescribed knit stretch/gather tension for the production style.',
+        ];
+      } else if (machineCat === 'FLATLOCK') {
+        return [
+          'Inspect bottom looper and top spreader thread path; ensure silicone thread lubricator box is topped up.',
+          'For cylinder bed operations, check tubular garment clearance around the 180mm/280mm arm.',
+          'Test pneumatic under-bed trimmer (UTT) suction and ensure waste fabric vacuum duct is unobstructed.',
+        ];
+      } else {
+        return [
+          'Verify electronic pulse knife drop alignment with buttonhole indexer eyelet die before starting lot.',
+          'Ensure work clamp pressure is adjusted correctly to secure button or bartack without crushing fabric grain.',
+          'Perform dry-head test cycle to confirm zero oil mist on white or light-color test swatches.',
+        ];
+      }
+    }
   }
 }
 
-function getCategoryChecklist(category?: AssetCategory): string[] {
+function getCategoryChecklist(category?: AssetCategory, asset?: Machine): string[] {
   switch (category) {
     case 'TABLE':
       return [
@@ -258,13 +312,28 @@ function getCategoryChecklist(category?: AssetCategory): string[] {
         'Monthly: Replace compressed air intake filter cartridge; inspect plant steam pipe lagging.',
       ];
     case 'MACHINE':
-    default:
-      return [
-        'Daily: Check oil level sight glass before turning on main circuit breaker.',
-        'Daily: Remove needle plate and clean thread fluff / lint from feed dog teeth.',
-        'Weekly: Inspect rotary hook point for needle scratches, burrs, or thread jams.',
-        'Monthly: Verify auto-trimmer blade sharpness and check belt/servo drive alignment.',
-      ];
+    default: {
+      const machineCat = asset ? asset.machineClass || getCategoryForType(asset.type) : 'OVERLOCK';
+      if (machineCat === 'OVERLOCK') {
+        return [
+          'Daily: Check oil level sight dome and wipe fabric lint from upper/lower trimming knife bracket.',
+          'Weekly: Inspect looper timing, looper guard clearance, and needle deflector alignment.',
+          'Monthly: Replace dull movable trimming knife; clean oil filter mesh and renew high-speed spindle lubricant.',
+        ];
+      } else if (machineCat === 'FLATLOCK') {
+        return [
+          'Daily: Clean lint from cylinder bed throat plate and check top spreader thread tension discs.',
+          'Weekly: Inspect feed dog differential mechanism and calibrate pneumatic UTT knife stroke.',
+          'Monthly: Check looper drive ball joints, check needle bar height against gauge block, flush reservoir.',
+        ];
+      } else {
+        return [
+          'Daily: Inspect button clamp rubber pads / bartack work holder for wear or loose mounting screws.',
+          'Weekly: Check electronic pulse motor knife drop blade sharpness and lubricate needle bar slide.',
+          'Monthly: Calibrate electronic sensor origins, test emergency cycle stop button, run diagnostic pattern self-test.',
+        ];
+      }
+    }
   }
 }
 
@@ -349,8 +418,8 @@ export function AssetModal({
   const CatIcon = catStyle.icon;
 
   const specs = getAssetCategorySpecs(currentAsset);
-  const sop = getCategorySOP(currentCat);
-  const checklist = getCategoryChecklist(currentCat);
+  const sop = getCategorySOP(currentCat, currentAsset);
+  const checklist = getCategoryChecklist(currentCat, currentAsset);
 
   // Status Helpers
   const isDown = currentAsset.status === 'BREAKDOWN';

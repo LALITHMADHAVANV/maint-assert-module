@@ -20,18 +20,25 @@ import { Machine, MachineType, MotorType, FloorLine, MachineStatus } from '@/typ
 import { subscribeMachines, createMachine } from '@/lib/services/cmmsService';
 import { useToast } from '@/context/ToastContext';
 import { ScanModal } from '@/components/scan/ScanModal';
+import {
+  MACHINE_CATALOG,
+  MachineCategoryGroup,
+  SUBTYPE_LOOKUP,
+  getCategoryForType,
+} from '@/lib/machineCatalog';
 
 export default function MachinesPage() {
   const { showToast } = useToast();
   const [machines, setMachines] = useState<Machine[]>([]);
 
   // Machine form state
-  const [mId, setMId] = useState('MC-SNLS-101');
-  const [mBrand, setMBrand] = useState('Juki');
-  const [mType, setMType] = useState<MachineType>('SNLS');
-  const [mModel, setMModel] = useState('DDL-8700-7');
+  const [mCategoryGroup, setMCategoryGroup] = useState<MachineCategoryGroup>('OVERLOCK');
+  const [mId, setMId] = useState('MC-OVK-4TH-101');
+  const [mBrand, setMBrand] = useState('Yamato');
+  const [mType, setMType] = useState<MachineType>('OVERLOCK_4_THREAD');
+  const [mModel, setMModel] = useState('AZ-8000G / 4-Thread High-Speed');
   const [mDate, setMDate] = useState('2023-04-12');
-  const [mCost, setMCost] = useState<number>(750);
+  const [mCost, setMCost] = useState<number>(980);
   const [mMotor, setMMotor] = useState<MotorType>('SERVO');
   const [mLine, setMLine] = useState<FloorLine>('Line 01');
   const [mStation, setMStation] = useState('Station 04');
@@ -70,6 +77,22 @@ export default function MachinesPage() {
   }, [mDate]);
 
   const typeNameMap: Record<MachineType, string> = {
+    // 1. Overlock (Yamato, Supreme)
+    OVERLOCK_4_THREAD: '4 Thread Overlock',
+    OVERLOCK_RIB_THREAD: 'Rib Thread Overlock',
+    OVERLOCK_LFC: 'LFC Overlock',
+    // 2. Flatlock (Yamato)
+    FLATLOCK_HEMMING: 'Hemming Flatlock',
+    FLATLOCK_SMALL_CYLINDER: 'Small Cylinder Bed Flatlock',
+    FLATLOCK_CYLINDER_BED: 'Cylinder Bed Flatlock',
+    FLATLOCK_FLAT_BED: 'Flat Bed Flatlock',
+    FLATLOCK_VT: 'VT Flatlock',
+    FLATLOCK_TOP_ELASTIC: 'Top Elastic Flatlock',
+    // 3. Single Needle Machine (Brother, Supreme)
+    SN_BROTHER_KAJA: 'Brother KAJA (Buttonhole)',
+    SN_BROTHER_BUTTON_STITCH: 'Brother Button Stitch',
+    SN_BROTHER_BARTACK: 'Brother Bartack',
+    // Legacy / Aliases
     SNLS: 'Single Needle Lockstitch (SNLS)',
     DNLS: 'Double Needle Lockstitch (DNLS)',
     OVERLOCK: '4-Thread Overlock / Safety Stitch',
@@ -79,6 +102,7 @@ export default function MachinesPage() {
     FEED_OFF_ARM: 'Feed-off-the-arm (FOTA)',
     CUTTING_MACHINE: 'Fabric End / Straight Knife Cutter',
     FUSING_PRESS: 'Collar / Cuff Fusing Press',
+    MACHINE_CUSTOM: 'Custom Machinery',
     TABLE_CUTTING: 'Fabric Spreading & Cutting Table',
     TABLE_SEWING: 'Sewing Workstation Table',
     TABLE_INSPECTION: 'QC Garment Checking Table',
@@ -98,17 +122,62 @@ export default function MachinesPage() {
     UTILITY_SAFETY: 'Line Fire Safety Station',
   };
 
+  const handleCategoryChange = (cat: MachineCategoryGroup) => {
+    setMCategoryGroup(cat);
+    const rnd = Math.floor(100 + Math.random() * 900);
+    if (cat === 'OVERLOCK') {
+      setMType('OVERLOCK_4_THREAD');
+      setMBrand('Yamato');
+      setMModel('AZ-8000G / 4-Thread High-Speed');
+      setMCost(980);
+      setMId(`MC-OVK-4TH-${rnd}`);
+    } else if (cat === 'FLATLOCK') {
+      setMType('FLATLOCK_HEMMING');
+      setMBrand('Yamato');
+      setMModel('VG-2700-Hemming / UTT');
+      setMCost(1550);
+      setMId(`MC-FLK-HEM-${rnd}`);
+    } else {
+      setMType('SN_BROTHER_KAJA');
+      setMBrand('Brother');
+      setMModel('HE-800B KAJA Electronic');
+      setMCost(1850);
+      setMId(`MC-SN-KAJA-${rnd}`);
+    }
+  };
+
+  const handleSubtypeChange = (type: MachineType) => {
+    setMType(type);
+    const meta = SUBTYPE_LOOKUP[type];
+    if (meta) {
+      setMModel(meta.defaultModel);
+      setMBrand(meta.defaultBrand);
+      const rnd = Math.floor(100 + Math.random() * 900);
+      if (type.startsWith('OVERLOCK')) {
+        setMId(`MC-OVK-${rnd}`);
+        setMCost(980);
+      } else if (type.startsWith('FLATLOCK')) {
+        setMId(`MC-FLK-${rnd}`);
+        setMCost(1600);
+      } else {
+        setMId(`MC-SN-${rnd}`);
+        setMCost(1500);
+      }
+    }
+  };
+
   const handleAutofill = () => {
-    setMId('MC-OVK-215');
-    setMBrand('Jack');
-    setMType('OVERLOCK');
-    setMModel('C4-4-M03');
+    setMCategoryGroup('OVERLOCK');
+    setMId('MC-OVK-4TH-204');
+    setMBrand('Yamato');
+    setMType('OVERLOCK_4_THREAD');
+    setMModel('AZ-8000G / 4-Thread High-Speed');
     setMDate('2024-01-15');
-    setMCost(850);
+    setMCost(980);
     setMMotor('SERVO');
     setMLine('Line 02');
-    setMStation('Station 11');
-    showToast('Sample machine specifications loaded into form.', 'info');
+    setMStation('Station 03');
+    showToast('Sample Yamato 4-Thread Overlock loaded into form.', 'info');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,10 +187,13 @@ export default function MachinesPage() {
 
     const newMachine: Machine = {
       id: cleanId,
+      name: `${mBrand} ${typeNameMap[mType] || mType} (${mModel})`,
       brand: mBrand,
       model: mModel.trim() || 'Standard Model',
+      category: 'MACHINE',
+      machineClass: mCategoryGroup,
       type: mType,
-      typeName: typeNameMap[mType],
+      typeName: typeNameMap[mType] || mType,
       motorType: mMotor,
       purchaseDate: mDate,
       cost: mCost,
@@ -130,6 +202,7 @@ export default function MachinesPage() {
       stationNo: mStation.trim() || 'Station 01',
       totalDowntimeMinutes: 0,
       ageYears: parseFloat(calculatedAge) || 0,
+      specs: SUBTYPE_LOOKUP[mType]?.specs || '',
     };
 
     try {
@@ -151,6 +224,8 @@ export default function MachinesPage() {
     setMMotor(m.motorType || 'SERVO');
     setMLine(m.currentLine);
     setMStation(m.stationNo);
+    const cat = getCategoryForType(m.type);
+    setMCategoryGroup(cat);
     showToast(`Loaded ${m.id} for QR preview and editing`, 'info');
   };
 
@@ -208,6 +283,85 @@ export default function MachinesPage() {
           </h3>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Machine Category Tabs */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Machine Category *
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {MACHINE_CATALOG.map((cat) => {
+                  const isSelected = mCategoryGroup === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => handleCategoryChange(cat.id)}
+                      className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs ring-2 ring-indigo-500/20'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="font-bold text-xs">{cat.name}</div>
+                      <div
+                        className={`text-[11px] font-medium mt-1 ${
+                          isSelected ? 'text-indigo-100' : 'text-slate-500'
+                        }`}
+                      >
+                        Brands: <span className="font-bold">{cat.brands.join(', ')}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Subtype and Brand Selection */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Machine Subtype / Variety *
+                </label>
+                <select
+                  required
+                  value={mType}
+                  onChange={(e) => handleSubtypeChange(e.target.value as MachineType)}
+                  className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-slate-800 font-bold"
+                >
+                  {MACHINE_CATALOG.find((c) => c.id === mCategoryGroup)?.subtypes.map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[10px] text-slate-500 mt-1 block leading-tight">
+                  {SUBTYPE_LOOKUP[mType]?.specs}
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Brand / Make *
+                </label>
+                <select
+                  required
+                  value={mBrand}
+                  onChange={(e) => setMBrand(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-slate-800 font-bold"
+                >
+                  {MACHINE_CATALOG.find((c) => c.id === mCategoryGroup)?.brands.map((b) => (
+                    <option key={b} value={b}>
+                      {b} OEM
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Strictly verified OEM brand for {MACHINE_CATALOG.find((c) => c.id === mCategoryGroup)?.name}
+                </span>
+              </div>
+            </div>
+
+            {/* Asset ID & Model Number */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
@@ -218,61 +372,22 @@ export default function MachinesPage() {
                   required
                   value={mId}
                   onChange={(e) => setMId(e.target.value)}
-                  placeholder="e.g. MC-SNLS-109"
+                  placeholder="e.g. MC-OVK-4TH-101"
                   className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none font-mono font-bold text-slate-900"
                 />
                 <span className="text-[10px] text-slate-400">Unique factory barcode / stencil</span>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Brand / Make *
-                </label>
-                <select
-                  required
-                  value={mBrand}
-                  onChange={(e) => setMBrand(e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-slate-800 font-medium"
-                >
-                  <option value="Juki">Juki (Japan)</option>
-                  <option value="Brother">Brother (Japan)</option>
-                  <option value="Jack">Jack (China)</option>
-                  <option value="Pegasus">Pegasus (Japan)</option>
-                  <option value="Siruba">Siruba (Taiwan)</option>
-                  <option value="Yamato">Yamato (Japan)</option>
-                </select>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Machine Class / Type *
-                </label>
-                <select
-                  required
-                  value={mType}
-                  onChange={(e) => setMType(e.target.value as MachineType)}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-slate-800 font-medium"
-                >
-                  <option value="SNLS">Single Needle Lockstitch (SNLS)</option>
-                  <option value="DNLS">Double Needle Lockstitch (DNLS)</option>
-                  <option value="OVERLOCK">4-Thread Overlock / Safety Stitch</option>
-                  <option value="FLATLOCK">Flatlock / Interlock (Coverstitch)</option>
-                  <option value="BARTACK">Electronic Bartack Machine</option>
-                  <option value="BUTTONHOLE">Buttonhole Indexer</option>
-                  <option value="FEED_OFF_ARM">Feed-off-the-arm (FOTA)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Model Number *
+                  Model Number / Spec *
                 </label>
                 <input
                   type="text"
                   required
                   value={mModel}
                   onChange={(e) => setMModel(e.target.value)}
-                  placeholder="e.g. DDL-8700-7"
+                  placeholder="e.g. AZ-8000G / 4-Thread High-Speed"
                   className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none font-medium text-slate-900"
                 />
               </div>

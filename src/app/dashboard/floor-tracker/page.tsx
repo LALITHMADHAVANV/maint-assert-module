@@ -55,6 +55,12 @@ import { subscribeMachines, createMachine, resetToSeedData } from '@/lib/service
 import { ScanModal } from '@/components/scan/ScanModal';
 import { AssetModal } from '@/components/asset/AssetModal';
 import { useToast } from '@/context/ToastContext';
+import {
+  MACHINE_CATALOG,
+  MachineCategoryGroup,
+  SUBTYPE_LOOKUP,
+  getCategoryForType,
+} from '@/lib/machineCatalog';
 
 export interface DepartmentDefinition {
   id: FactoryDepartment;
@@ -286,6 +292,8 @@ export default function FloorTrackerPage() {
 
   // New Asset Form State
   const [newCategory, setNewCategory] = useState<AssetCategory>('TABLE');
+  const [newMachineCat, setNewMachineCat] = useState<MachineCategoryGroup>('OVERLOCK');
+  const [newMachineType, setNewMachineType] = useState<MachineType>('OVERLOCK_4_THREAD');
   const [newDepartment, setNewDepartment] = useState<FactoryDepartment>('Cutting Department');
   const [newId, setNewId] = useState(`TBL-CUT-${Math.floor(100 + Math.random() * 900)}`);
   const [newName, setNewName] = useState('');
@@ -542,15 +550,60 @@ export default function FloorTrackerPage() {
         break;
       case 'MACHINE':
       default:
-        setNewId(`MC-CUT-${rnd}`);
-        setNewBrand('Eastman');
-        setNewModel('EC-900-Air');
-        setNewCost(3600);
-        setNewDepartment('Cutting Department');
-        setNewLine('Cutting Department');
-        setNewStation('Cutting Bay 01');
-        setNewSpecs('Precision band knife with variable speed inverter');
+        setNewMachineCat('OVERLOCK');
+        setNewMachineType('OVERLOCK_4_THREAD');
+        setNewId(`MC-OVK-4TH-${rnd}`);
+        setNewBrand('Yamato');
+        setNewModel('AZ-8000G / 4-Thread High-Speed');
+        setNewCost(980);
+        setNewDepartment('Sewing Floor');
+        setNewLine('Line 01');
+        setNewStation('Station 04');
+        setNewSpecs('4-thread safety stitch, differential feed ratio 1:0.7–1:2, max 7,500 RPM, auto-lubrication');
         break;
+    }
+  };
+
+  const handleMachineCatChangeInForm = (cat: MachineCategoryGroup) => {
+    setNewMachineCat(cat);
+    const catDef = MACHINE_CATALOG.find((c) => c.id === cat);
+    if (!catDef) return;
+    const firstSub = catDef.subtypes[0];
+    setNewMachineType(firstSub.id);
+    setNewBrand(firstSub.defaultBrand);
+    setNewModel(firstSub.defaultModel);
+    setNewSpecs(firstSub.specs);
+    const rnd = Math.floor(100 + Math.random() * 900);
+    if (cat === 'OVERLOCK') {
+      setNewId(`MC-OVK-4TH-${rnd}`);
+      setNewCost(980);
+    } else if (cat === 'FLATLOCK') {
+      setNewId(`MC-FLK-HEM-${rnd}`);
+      setNewCost(1550);
+    } else {
+      setNewId(`MC-SN-KAJA-${rnd}`);
+      setNewCost(1850);
+    }
+  };
+
+  const handleMachineSubtypeChangeInForm = (type: MachineType) => {
+    setNewMachineType(type);
+    const meta = SUBTYPE_LOOKUP[type];
+    if (meta) {
+      setNewBrand(meta.defaultBrand);
+      setNewModel(meta.defaultModel);
+      setNewSpecs(meta.specs);
+      const rnd = Math.floor(100 + Math.random() * 900);
+      if (type.startsWith('OVERLOCK')) {
+        setNewId(`MC-OVK-${rnd}`);
+        setNewCost(980);
+      } else if (type.startsWith('FLATLOCK')) {
+        setNewId(`MC-FLK-${rnd}`);
+        setNewCost(1600);
+      } else {
+        setNewId(`MC-SN-${rnd}`);
+        setNewCost(1500);
+      }
     }
   };
 
@@ -562,7 +615,7 @@ export default function FloorTrackerPage() {
     }
 
     const typeMapping: Record<AssetCategory, MachineType> = {
-      MACHINE: 'SNLS',
+      MACHINE: 'OVERLOCK_4_THREAD',
       TABLE: 'TABLE_SEWING',
       CHAIR: 'CHAIR_OPERATOR',
       LIGHT: 'LIGHT_HIGHBAY',
@@ -570,15 +623,24 @@ export default function FloorTrackerPage() {
       UTILITY: 'UTILITY_BOILER',
     };
 
+    const targetType = newCategory === 'MACHINE' ? newMachineType : typeMapping[newCategory];
+    const subMeta = newCategory === 'MACHINE' ? SUBTYPE_LOOKUP[newMachineType] : undefined;
+    const targetTypeName = subMeta ? subMeta.name : `${newBrand} ${getCategoryMeta(newCategory).label}`;
+
     const newAsset: Machine = {
       id: newId.trim().toUpperCase(),
-      name: newName.trim() || `${newBrand} ${getCategoryMeta(newCategory).label} (${newStation})`,
+      name:
+        newName.trim() ||
+        (subMeta
+          ? `${newBrand} ${subMeta.name} (${newModel})`
+          : `${newBrand} ${getCategoryMeta(newCategory).label} (${newStation})`),
       brand: newBrand.trim() || 'Generic',
       model: newModel.trim() || 'Standard',
       category: newCategory,
+      machineClass: newCategory === 'MACHINE' ? newMachineCat : undefined,
       department: newDepartment,
-      type: typeMapping[newCategory],
-      typeName: `${newBrand} ${getCategoryMeta(newCategory).label}`,
+      type: targetType,
+      typeName: targetTypeName,
       purchaseDate: new Date().toISOString().split('T')[0],
       cost: Number(newCost) || 100,
       status: newStatus,
@@ -586,7 +648,7 @@ export default function FloorTrackerPage() {
       stationNo: newStation.trim() || 'Station 01',
       totalDowntimeMinutes: 0,
       ageYears: 0.1,
-      specs: newSpecs.trim(),
+      specs: newSpecs.trim() || (subMeta?.specs || ''),
     };
 
     try {
@@ -1602,31 +1664,113 @@ export default function FloorTrackerPage() {
                 </div>
               </div>
 
-              {/* Brand & Model */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Brand / Manufacturer
-                  </label>
-                  <input
-                    type="text"
-                    value={newBrand}
-                    onChange={(e) => setNewBrand(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800"
-                  />
+              {/* Machine Specific Classification or General Brand/Model */}
+              {newCategory === 'MACHINE' ? (
+                <div className="space-y-3 bg-indigo-50/50 p-3 rounded-2xl border border-indigo-100">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Machine Category *
+                    </label>
+                    <div className="grid grid-cols-3 gap-1.5 text-xs font-semibold">
+                      {MACHINE_CATALOG.map((cat) => {
+                        const isSelected = newMachineCat === cat.id;
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => handleMachineCatChangeInForm(cat.id)}
+                            className={`p-2 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center ${
+                              isSelected
+                                ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-xs'
+                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            <span className="text-xs">{cat.name}</span>
+                            <span className={`text-[10px] ${isSelected ? 'text-indigo-100' : 'text-slate-400'}`}>
+                              {cat.brands.join(', ')}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">
+                        Subtype / Variety *
+                      </label>
+                      <select
+                        value={newMachineType}
+                        onChange={(e) => handleMachineSubtypeChangeInForm(e.target.value as MachineType)}
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800 font-bold"
+                      >
+                        {MACHINE_CATALOG.find((c) => c.id === newMachineCat)?.subtypes.map((sub) => (
+                          <option key={sub.id} value={sub.id}>
+                            {sub.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">
+                        Permitted OEM Brand *
+                      </label>
+                      <select
+                        value={newBrand}
+                        onChange={(e) => setNewBrand(e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800 font-bold"
+                      >
+                        {MACHINE_CATALOG.find((c) => c.id === newMachineCat)?.brands.map((b) => (
+                          <option key={b} value={b}>
+                            {b}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      Model / Descriptor *
+                    </label>
+                    <input
+                      type="text"
+                      value={newModel}
+                      onChange={(e) => setNewModel(e.target.value)}
+                      required
+                      placeholder="e.g. AZ-8000G / 4-Thread High-Speed"
+                      className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800 font-medium"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Model / Descriptor
-                  </label>
-                  <input
-                    type="text"
-                    value={newModel}
-                    onChange={(e) => setNewModel(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800"
-                  />
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      Brand / Manufacturer
+                    </label>
+                    <input
+                      type="text"
+                      value={newBrand}
+                      onChange={(e) => setNewBrand(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      Model / Descriptor
+                    </label>
+                    <input
+                      type="text"
+                      value={newModel}
+                      onChange={(e) => setNewModel(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Valuation & Initial Status */}
               <div className="grid grid-cols-2 gap-3">

@@ -7,16 +7,32 @@ export type AssetCategory =
   | 'UTILITY'; // Steam Boilers, Air Compressors, Fire Safety
 
 export type MachineType =
-  // Machinery
+  // 1. Overlock (Yamato, Supreme)
+  | 'OVERLOCK_4_THREAD' // 4 Thread Overlock
+  | 'OVERLOCK_RIB_THREAD' // Rib Thread Overlock
+  | 'OVERLOCK_LFC' // LFC Overlock
+  // 2. Flatlock (Yamato)
+  | 'FLATLOCK_HEMMING' // Hemming Flatlock
+  | 'FLATLOCK_SMALL_CYLINDER' // Small Cylinder Bed Flatlock
+  | 'FLATLOCK_CYLINDER_BED' // Cylinder Bed Flatlock
+  | 'FLATLOCK_FLAT_BED' // Flat Bed Flatlock
+  | 'FLATLOCK_VT' // VT Flatlock
+  | 'FLATLOCK_TOP_ELASTIC' // Top Elastic Flatlock
+  // 3. Single Needle Machine (Brother, Supreme)
+  | 'SN_BROTHER_KAJA' // Brother KAJA (Buttonhole)
+  | 'SN_BROTHER_BUTTON_STITCH' // Brother Button Stitch
+  | 'SN_BROTHER_BARTACK' // Brother Bartack
+  // Legacy / Industrial Machine Aliases
   | 'SNLS' // Single Needle Lockstitch
   | 'DNLS' // Double Needle Lockstitch
-  | 'OVERLOCK' // 4-Thread or 5-Thread Overlock
-  | 'FLATLOCK' // Flatlock / Interlock (Coverstitch)
+  | 'OVERLOCK' // Generic Overlock
+  | 'FLATLOCK' // Generic Flatlock
   | 'BUTTONHOLE' // Buttonhole Indexer
   | 'BARTACK' // Electronic Bartack
   | 'FEED_OFF_ARM' // Feed-off-the-arm
   | 'CUTTING_MACHINE' // Fabric End / Straight Knife Cutter
   | 'FUSING_PRESS' // Collar / Cuff Fusing Press
+  | 'MACHINE_CUSTOM' // Custom / Multi-head
   // Tables
   | 'TABLE_CUTTING' // Fabric Spreading & Cutting Table
   | 'TABLE_SEWING' // Sewing Workstation Table
@@ -39,6 +55,8 @@ export type MachineType =
   | 'UTILITY_BOILER' // Industrial Steam Generator
   | 'UTILITY_COMPRESSOR' // Screw Air Compressor
   | 'UTILITY_SAFETY'; // Line Fire Safety Station
+
+export type MachineClass = 'OVERLOCK' | 'FLATLOCK' | 'SINGLE_NEEDLE';
 
 export type MotorType = 'SERVO' | 'CLUTCH';
 
@@ -82,8 +100,9 @@ export interface Machine {
   model: string; // "DDL-8700-7", "Optima-360", "120W-LED"
   category?: AssetCategory; // Defaults to 'MACHINE' if absent
   department?: FactoryDepartment; // Factory department or plant section
+  machineClass?: MachineClass; // 'OVERLOCK' | 'FLATLOCK' | 'SINGLE_NEEDLE'
   type: MachineType;
-  typeName?: string; // e.g. "Single Needle Lockstitch (SNLS)"
+  typeName?: string; // e.g. "4 Thread Overlock"
   motorType?: MotorType;
   purchaseDate: string; // ISO format or YYYY-MM-DD
   cost: number; // USD
