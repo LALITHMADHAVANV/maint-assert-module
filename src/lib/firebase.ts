@@ -3,12 +3,12 @@ import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getAuth, type Auth } from 'firebase/auth';
 
 export const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyReplaceWithYourOwnApiKey12345',
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'textech-cmms.firebaseapp.com',
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'textech-cmms',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'textech-cmms.appspot.com',
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '109283746520',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:109283746520:web:8a9b0c1d2e3f4a5b6c7d8e',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyBerHuo4pX5vCdn3qJbR6RWOLpf42WBjRc',
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'maintenance-module-9c497.firebaseapp.com',
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'maintenance-module-9c497',
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'maintenance-module-9c497.firebasestorage.app',
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '420649959262',
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:420649959262:web:9849e8e7d072cd372c99cf',
 };
 
 // Pure Firebase mode: always enabled and connected to Firebase
