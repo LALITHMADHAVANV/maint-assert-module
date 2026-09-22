@@ -28,10 +28,12 @@ import {
   Maximize2,
   Boxes,
   HelpCircle,
+  BookOpen,
 } from 'lucide-react';
 import { Machine, FloorLine, AssetCategory, MachineType, MachineStatus } from '@/types/cmms';
 import { subscribeMachines, createMachine, resetToSeedData } from '@/lib/services/cmmsService';
 import { ScanModal } from '@/components/scan/ScanModal';
+import { AssetTypeCatalogModal } from '@/components/floor/AssetTypeCatalogModal';
 import { useToast } from '@/context/ToastContext';
 
 interface LineDefinition {
@@ -113,6 +115,17 @@ export default function FloorTrackerPage() {
   const [targetMoveMachineId, setTargetMoveMachineId] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Catalog Modal State
+  const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
+  const [catalogCategory, setCatalogCategory] = useState<AssetCategory | 'ALL'>('ALL');
+  const [catalogTypeId, setCatalogTypeId] = useState<string | undefined>(undefined);
+
+  const handleOpenCatalog = (cat: AssetCategory | 'ALL' = 'ALL', typeId?: string) => {
+    setCatalogCategory(cat);
+    setCatalogTypeId(typeId);
+    setIsCatalogModalOpen(true);
+  };
 
   // Filters & Views
   const [activeCategory, setActiveCategory] = useState<AssetCategory | 'ALL'>('ALL');
@@ -444,203 +457,266 @@ export default function FloorTrackerPage() {
         </div>
       </div>
 
-      {/* KPI Metric Strip Across All Asset Classes */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* KPI Metric Strip Across All Asset Classes With Embedded Type Catalog Buttons */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         {/* Total Assets & Valuation */}
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            <span>Total Capital</span>
-            <Building className="w-3.5 h-3.5 text-slate-400" />
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              <span>Total Capital</span>
+              <Building className="w-3.5 h-3.5 text-slate-400" />
+            </div>
+            <div className="text-xl font-extrabold text-indigo-700 font-mono">
+              ${totalValuation.toLocaleString()}
+            </div>
+            <div className="text-[11px] text-slate-500 font-medium">{totalAssets} Total Assets</div>
           </div>
-          <div className="text-xl font-extrabold text-indigo-700 font-mono">
-            ${totalValuation.toLocaleString()}
-          </div>
-          <div className="text-[11px] text-slate-500 font-medium">{totalAssets} Total Assets</div>
+          <button
+            type="button"
+            onClick={() => handleOpenCatalog('ALL')}
+            className="mt-2.5 w-full text-[10px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 px-2 py-1 rounded-xl flex items-center justify-between transition group cursor-pointer"
+            title="Inspect Master Asset Types Catalog (18 Types)"
+          >
+            <span className="flex items-center gap-1">
+              <BookOpen className="w-3 h-3 text-indigo-600" />
+              <span>Catalog (18)</span>
+            </span>
+            <span className="group-hover:translate-x-0.5 transition-transform text-slate-400">→</span>
+          </button>
         </div>
 
         {/* 🧵 Machinery */}
         <div
           onClick={() => setActiveCategory(activeCategory === 'MACHINE' ? 'ALL' : 'MACHINE')}
-          className={`p-3.5 rounded-2xl border shadow-xs space-y-1 cursor-pointer transition ${
+          className={`p-3.5 rounded-2xl border shadow-xs cursor-pointer transition flex flex-col justify-between ${
             activeCategory === 'MACHINE'
               ? 'bg-indigo-50/80 border-indigo-300 ring-2 ring-indigo-400'
               : 'bg-white border-slate-200 hover:border-indigo-200'
           }`}
         >
-          <div className="flex items-center justify-between text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
-            <span>Machinery</span>
-            <Wrench className="w-3.5 h-3.5 text-indigo-600" />
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
+              <span>Machinery</span>
+              <Wrench className="w-3.5 h-3.5 text-indigo-600" />
+            </div>
+            <div className="text-xl font-extrabold text-slate-900 font-mono">
+              {categoryCounts.MACHINE || 0}
+            </div>
+            <div className="text-[11px] text-slate-500 truncate">Sewing & Cutting</div>
           </div>
-          <div className="text-xl font-extrabold text-slate-900 font-mono">
-            {categoryCounts.MACHINE || 0}
-          </div>
-          <div className="text-[11px] text-slate-500 truncate">Sewing & Cutting Units</div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenCatalog('MACHINE');
+            }}
+            className="mt-2.5 w-full text-[10px] font-bold text-indigo-700 bg-indigo-100/90 hover:bg-indigo-200 border border-indigo-200 px-2 py-1 rounded-xl flex items-center justify-between transition group cursor-pointer"
+            title="Inspect Machine Types Catalog & SOP"
+          >
+            <span className="flex items-center gap-1">
+              <BookOpen className="w-3 h-3 text-indigo-600" />
+              <span>Catalog (6 Types)</span>
+            </span>
+            <span className="group-hover:translate-x-0.5 transition-transform text-indigo-500">→</span>
+          </button>
         </div>
 
         {/* 🪵 Work Tables */}
         <div
           onClick={() => setActiveCategory(activeCategory === 'TABLE' ? 'ALL' : 'TABLE')}
-          className={`p-3.5 rounded-2xl border shadow-xs space-y-1 cursor-pointer transition ${
+          className={`p-3.5 rounded-2xl border shadow-xs cursor-pointer transition flex flex-col justify-between ${
             activeCategory === 'TABLE'
               ? 'bg-amber-50/80 border-amber-300 ring-2 ring-amber-400'
               : 'bg-white border-slate-200 hover:border-amber-200'
           }`}
         >
-          <div className="flex items-center justify-between text-[10px] font-bold text-amber-700 uppercase tracking-wider">
-            <span>Work Tables</span>
-            <LayoutGrid className="w-3.5 h-3.5 text-amber-600" />
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+              <span>Work Tables</span>
+              <LayoutGrid className="w-3.5 h-3.5 text-amber-600" />
+            </div>
+            <div className="text-xl font-extrabold text-slate-900 font-mono">
+              {categoryCounts.TABLE || 0}
+            </div>
+            <div className="text-[11px] text-slate-500 truncate">Cutting & Inspection</div>
           </div>
-          <div className="text-xl font-extrabold text-slate-900 font-mono">
-            {categoryCounts.TABLE || 0}
-          </div>
-          <div className="text-[11px] text-slate-500 truncate">Cutting & Inspection</div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenCatalog('TABLE');
+            }}
+            className="mt-2.5 w-full text-[10px] font-bold text-amber-800 bg-amber-100/90 hover:bg-amber-200 border border-amber-200 px-2 py-1 rounded-xl flex items-center justify-between transition group cursor-pointer"
+            title="Inspect Work Table Types Catalog & Dimensions"
+          >
+            <span className="flex items-center gap-1">
+              <BookOpen className="w-3 h-3 text-amber-700" />
+              <span>Catalog (3 Types)</span>
+            </span>
+            <span className="group-hover:translate-x-0.5 transition-transform text-amber-600">→</span>
+          </button>
         </div>
 
         {/* 🪑 Chairs & Seating */}
         <div
           onClick={() => setActiveCategory(activeCategory === 'CHAIR' ? 'ALL' : 'CHAIR')}
-          className={`p-3.5 rounded-2xl border shadow-xs space-y-1 cursor-pointer transition ${
+          className={`p-3.5 rounded-2xl border shadow-xs cursor-pointer transition flex flex-col justify-between ${
             activeCategory === 'CHAIR'
               ? 'bg-teal-50/80 border-teal-300 ring-2 ring-teal-400'
               : 'bg-white border-slate-200 hover:border-teal-200'
           }`}
         >
-          <div className="flex items-center justify-between text-[10px] font-bold text-teal-700 uppercase tracking-wider">
-            <span>Chairs & Seating</span>
-            <Armchair className="w-3.5 h-3.5 text-teal-600" />
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[10px] font-bold text-teal-700 uppercase tracking-wider">
+              <span>Chairs & Seats</span>
+              <Armchair className="w-3.5 h-3.5 text-teal-600" />
+            </div>
+            <div className="text-xl font-extrabold text-slate-900 font-mono">
+              {categoryCounts.CHAIR || 0}
+            </div>
+            <div className="text-[11px] text-slate-500 truncate">Swivel & Stools</div>
           </div>
-          <div className="text-xl font-extrabold text-slate-900 font-mono">
-            {categoryCounts.CHAIR || 0}
-          </div>
-          <div className="text-[11px] text-slate-500 truncate">Operator Swivel & Stools</div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenCatalog('CHAIR');
+            }}
+            className="mt-2.5 w-full text-[10px] font-bold text-teal-800 bg-teal-100/90 hover:bg-teal-200 border border-teal-200 px-2 py-1 rounded-xl flex items-center justify-between transition group cursor-pointer"
+            title="Inspect Chair Types Catalog & Ergonomics"
+          >
+            <span className="flex items-center gap-1">
+              <BookOpen className="w-3 h-3 text-teal-700" />
+              <span>Catalog (3 Types)</span>
+            </span>
+            <span className="group-hover:translate-x-0.5 transition-transform text-teal-600">→</span>
+          </button>
         </div>
 
         {/* 💡 Lighting Fixtures */}
         <div
           onClick={() => setActiveCategory(activeCategory === 'LIGHT' ? 'ALL' : 'LIGHT')}
-          className={`p-3.5 rounded-2xl border shadow-xs space-y-1 cursor-pointer transition ${
+          className={`p-3.5 rounded-2xl border shadow-xs cursor-pointer transition flex flex-col justify-between ${
             activeCategory === 'LIGHT'
               ? 'bg-yellow-50/80 border-yellow-300 ring-2 ring-yellow-400'
               : 'bg-white border-slate-200 hover:border-yellow-200'
           }`}
         >
-          <div className="flex items-center justify-between text-[10px] font-bold text-yellow-700 uppercase tracking-wider">
-            <span>Lighting Fixtures</span>
-            <Lightbulb className="w-3.5 h-3.5 text-yellow-600" />
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[10px] font-bold text-yellow-700 uppercase tracking-wider">
+              <span>Lighting</span>
+              <Lightbulb className="w-3.5 h-3.5 text-yellow-600" />
+            </div>
+            <div className="text-xl font-extrabold text-slate-900 font-mono">
+              {categoryCounts.LIGHT || 0}
+            </div>
+            <div className="text-[11px] text-slate-500 truncate">High-Bay & Task</div>
           </div>
-          <div className="text-xl font-extrabold text-slate-900 font-mono">
-            {categoryCounts.LIGHT || 0}
-          </div>
-          <div className="text-[11px] text-slate-500 truncate">High-Bay & Needle Lamps</div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenCatalog('LIGHT');
+            }}
+            className="mt-2.5 w-full text-[10px] font-bold text-yellow-800 bg-yellow-100/90 hover:bg-yellow-200 border border-yellow-200 px-2 py-1 rounded-xl flex items-center justify-between transition group cursor-pointer"
+            title="Inspect Lighting Types Catalog & Lux"
+          >
+            <span className="flex items-center gap-1">
+              <BookOpen className="w-3 h-3 text-yellow-700" />
+              <span>Catalog (3 Types)</span>
+            </span>
+            <span className="group-hover:translate-x-0.5 transition-transform text-yellow-600">→</span>
+          </button>
         </div>
 
         {/* 💨 Fans & Ventilation */}
         <div
           onClick={() => setActiveCategory(activeCategory === 'FAN' ? 'ALL' : 'FAN')}
-          className={`p-3.5 rounded-2xl border shadow-xs space-y-1 cursor-pointer transition ${
+          className={`p-3.5 rounded-2xl border shadow-xs cursor-pointer transition flex flex-col justify-between ${
             activeCategory === 'FAN'
               ? 'bg-cyan-50/80 border-cyan-300 ring-2 ring-cyan-400'
               : 'bg-white border-slate-200 hover:border-cyan-200'
           }`}
         >
-          <div className="flex items-center justify-between text-[10px] font-bold text-cyan-700 uppercase tracking-wider">
-            <span>Fans & Air Flow</span>
-            <Fan className="w-3.5 h-3.5 text-cyan-600" />
-          </div>
-          <div className="text-xl font-extrabold text-slate-900 font-mono">
-            {categoryCounts.FAN || 0}
-          </div>
-          <div className="text-[11px] text-slate-500 truncate">Ceiling & Exhaust Units</div>
-        </div>
-      </div>
-
-      {/* 🚀 Dedicated Asset Types & Specifications Directory Quick Portal */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4 sm:p-5 rounded-3xl border border-indigo-900/50 shadow-md">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="p-1 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-400/30">
-                <SlidersHorizontal className="w-4 h-4" />
-              </span>
-              <h3 className="font-extrabold text-sm sm:text-base tracking-tight text-white">
-                Inspect Asset Types & Engineering Specifications
-              </h3>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
-                SOP & Standards
-              </span>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[10px] font-bold text-cyan-700 uppercase tracking-wider">
+              <span>Fans & Air</span>
+              <Fan className="w-3.5 h-3.5 text-cyan-600" />
             </div>
-            <p className="text-xs text-indigo-200/80 mt-1 max-w-2xl">
-              Inspect detailed machine models, table dimensions, chair ergonomic adjustments, lighting Lux ratings, fan airflows, and utility operating checklists across all 6 factory categories:
-            </p>
+            <div className="text-xl font-extrabold text-slate-900 font-mono">
+              {categoryCounts.FAN || 0}
+            </div>
+            <div className="text-[11px] text-slate-500 truncate">Ceiling & Blowers</div>
           </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenCatalog('FAN');
+            }}
+            className="mt-2.5 w-full text-[10px] font-bold text-cyan-800 bg-cyan-100/90 hover:bg-cyan-200 border border-cyan-200 px-2 py-1 rounded-xl flex items-center justify-between transition group cursor-pointer"
+            title="Inspect Fan Types Catalog & Air Flow"
+          >
+            <span className="flex items-center gap-1">
+              <BookOpen className="w-3 h-3 text-cyan-700" />
+              <span>Catalog (2 Types)</span>
+            </span>
+            <span className="group-hover:translate-x-0.5 transition-transform text-cyan-600">→</span>
+          </button>
+        </div>
 
-          <div className="flex items-center flex-wrap gap-2">
-            <Link
-              href="/dashboard/asset-types?category=MACHINE"
-              className="text-xs font-semibold px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 shadow-sm"
-            >
-              <Wrench className="w-3.5 h-3.5" />
-              <span>Machine Types →</span>
-            </Link>
-
-            <Link
-              href="/dashboard/asset-types?category=TABLE"
-              className="text-xs font-semibold px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white transition flex items-center gap-1.5 shadow-sm"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Table Types →</span>
-            </Link>
-
-            <Link
-              href="/dashboard/asset-types?category=CHAIR"
-              className="text-xs font-semibold px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white transition flex items-center gap-1.5 shadow-sm"
-            >
-              <Armchair className="w-3.5 h-3.5" />
-              <span>Chair Types →</span>
-            </Link>
-
-            <Link
-              href="/dashboard/asset-types?category=LIGHT"
-              className="text-xs font-semibold px-3 py-2 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-white transition flex items-center gap-1.5 shadow-sm"
-            >
-              <Lightbulb className="w-3.5 h-3.5" />
-              <span>Lighting Types →</span>
-            </Link>
-
-            <Link
-              href="/dashboard/asset-types?category=FAN"
-              className="text-xs font-semibold px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white transition flex items-center gap-1.5 shadow-sm"
-            >
-              <Fan className="w-3.5 h-3.5" />
-              <span>Fan Types →</span>
-            </Link>
-
-            <Link
-              href="/dashboard/asset-types?category=UTILITY"
-              className="text-xs font-semibold px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white transition flex items-center gap-1.5 shadow-sm"
-            >
-              <Flame className="w-3.5 h-3.5" />
-              <span>Utility Types →</span>
-            </Link>
+        {/* ⚡ Utilities & Plant */}
+        <div
+          onClick={() => setActiveCategory(activeCategory === 'UTILITY' ? 'ALL' : 'UTILITY')}
+          className={`p-3.5 rounded-2xl border shadow-xs cursor-pointer transition flex flex-col justify-between ${
+            activeCategory === 'UTILITY'
+              ? 'bg-purple-50/80 border-purple-300 ring-2 ring-purple-400'
+              : 'bg-white border-slate-200 hover:border-purple-200'
+          }`}
+        >
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[10px] font-bold text-purple-700 uppercase tracking-wider">
+              <span>Utilities</span>
+              <Flame className="w-3.5 h-3.5 text-purple-600" />
+            </div>
+            <div className="text-xl font-extrabold text-slate-900 font-mono">
+              {categoryCounts.UTILITY || 0}
+            </div>
+            <div className="text-[11px] text-slate-500 truncate">Boilers & Compressors</div>
           </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenCatalog('UTILITY');
+            }}
+            className="mt-2.5 w-full text-[10px] font-bold text-purple-800 bg-purple-100/90 hover:bg-purple-200 border border-purple-200 px-2 py-1 rounded-xl flex items-center justify-between transition group cursor-pointer"
+            title="Inspect Utility Types Catalog & Specs"
+          >
+            <span className="flex items-center gap-1">
+              <BookOpen className="w-3 h-3 text-purple-700" />
+              <span>Catalog (2 Types)</span>
+            </span>
+            <span className="group-hover:translate-x-0.5 transition-transform text-purple-600">→</span>
+          </button>
         </div>
       </div>
 
       {/* Control Bar: Categories Filter, Search & View Switcher */}
       <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* Category Filter Pills */}
+          {/* Category Filter Pills With Embedded Type Catalog Triggers */}
           <div className="flex items-center flex-wrap gap-1.5 text-xs font-semibold">
             <button
               type="button"
               onClick={() => setActiveCategory('ALL')}
-              className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
                 activeCategory === 'ALL'
                   ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
                   : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
               }`}
             >
-              <span>All Factory Assets</span>
+              <span>All Assets</span>
               <span className="text-[10px] bg-white/20 px-1.5 py-0.2 rounded-full font-mono">
                 {totalAssets}
               </span>
@@ -649,7 +725,7 @@ export default function FloorTrackerPage() {
             <button
               type="button"
               onClick={() => setActiveCategory('MACHINE')}
-              className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 ${
+              className={`px-2.5 py-1.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
                 activeCategory === 'MACHINE'
                   ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
                   : 'bg-indigo-50/60 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
@@ -660,12 +736,23 @@ export default function FloorTrackerPage() {
               <span className="text-[10px] bg-indigo-200/60 text-indigo-900 px-1.5 py-0.2 rounded-full font-mono">
                 {categoryCounts.MACHINE || 0}
               </span>
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenCatalog('MACHINE');
+                }}
+                title="Open Machinery Types Catalog"
+                className="ml-0.5 text-[9px] bg-white/30 hover:bg-white/50 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 transition"
+              >
+                <BookOpen className="w-2.5 h-2.5" />
+                <span>Catalog</span>
+              </span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveCategory('TABLE')}
-              className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 ${
+              className={`px-2.5 py-1.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
                 activeCategory === 'TABLE'
                   ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
                   : 'bg-amber-50/60 text-amber-800 border-amber-200 hover:bg-amber-100'
@@ -676,28 +763,50 @@ export default function FloorTrackerPage() {
               <span className="text-[10px] bg-amber-200/60 text-amber-900 px-1.5 py-0.2 rounded-full font-mono">
                 {categoryCounts.TABLE || 0}
               </span>
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenCatalog('TABLE');
+                }}
+                title="Open Table Types Catalog"
+                className="ml-0.5 text-[9px] bg-white/30 hover:bg-white/50 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 transition"
+              >
+                <BookOpen className="w-2.5 h-2.5" />
+                <span>Catalog</span>
+              </span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveCategory('CHAIR')}
-              className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 ${
+              className={`px-2.5 py-1.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
                 activeCategory === 'CHAIR'
                   ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
                   : 'bg-teal-50/60 text-teal-800 border-teal-200 hover:bg-teal-100'
               }`}
             >
               <Armchair className="w-3.5 h-3.5" />
-              <span>Chairs & Seating</span>
+              <span>Chairs</span>
               <span className="text-[10px] bg-teal-200/60 text-teal-900 px-1.5 py-0.2 rounded-full font-mono">
                 {categoryCounts.CHAIR || 0}
+              </span>
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenCatalog('CHAIR');
+                }}
+                title="Open Chair Types Catalog"
+                className="ml-0.5 text-[9px] bg-white/30 hover:bg-white/50 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 transition"
+              >
+                <BookOpen className="w-2.5 h-2.5" />
+                <span>Catalog</span>
               </span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveCategory('LIGHT')}
-              className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 ${
+              className={`px-2.5 py-1.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
                 activeCategory === 'LIGHT'
                   ? 'bg-yellow-600 text-white border-yellow-600 shadow-xs'
                   : 'bg-yellow-50/60 text-yellow-800 border-yellow-200 hover:bg-yellow-100'
@@ -708,28 +817,50 @@ export default function FloorTrackerPage() {
               <span className="text-[10px] bg-yellow-200/60 text-yellow-900 px-1.5 py-0.2 rounded-full font-mono">
                 {categoryCounts.LIGHT || 0}
               </span>
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenCatalog('LIGHT');
+                }}
+                title="Open Lighting Types Catalog"
+                className="ml-0.5 text-[9px] bg-white/30 hover:bg-white/50 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 transition"
+              >
+                <BookOpen className="w-2.5 h-2.5" />
+                <span>Catalog</span>
+              </span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveCategory('FAN')}
-              className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 ${
+              className={`px-2.5 py-1.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
                 activeCategory === 'FAN'
                   ? 'bg-cyan-600 text-white border-cyan-600 shadow-xs'
                   : 'bg-cyan-50/60 text-cyan-800 border-cyan-200 hover:bg-cyan-100'
               }`}
             >
               <Fan className="w-3.5 h-3.5" />
-              <span>Fans & Air</span>
+              <span>Fans</span>
               <span className="text-[10px] bg-cyan-200/60 text-cyan-900 px-1.5 py-0.2 rounded-full font-mono">
                 {categoryCounts.FAN || 0}
+              </span>
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenCatalog('FAN');
+                }}
+                title="Open Fan Types Catalog"
+                className="ml-0.5 text-[9px] bg-white/30 hover:bg-white/50 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 transition"
+              >
+                <BookOpen className="w-2.5 h-2.5" />
+                <span>Catalog</span>
               </span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveCategory('UTILITY')}
-              className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 ${
+              className={`px-2.5 py-1.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
                 activeCategory === 'UTILITY'
                   ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
                   : 'bg-purple-50/60 text-purple-800 border-purple-200 hover:bg-purple-100'
@@ -739,6 +870,17 @@ export default function FloorTrackerPage() {
               <span>Utilities</span>
               <span className="text-[10px] bg-purple-200/60 text-purple-900 px-1.5 py-0.2 rounded-full font-mono">
                 {categoryCounts.UTILITY || 0}
+              </span>
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenCatalog('UTILITY');
+                }}
+                title="Open Utility Types Catalog"
+                className="ml-0.5 text-[9px] bg-white/30 hover:bg-white/50 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 transition"
+              >
+                <BookOpen className="w-2.5 h-2.5" />
+                <span>Catalog</span>
               </span>
             </button>
           </div>
@@ -936,13 +1078,15 @@ export default function FloorTrackerPage() {
                                   {m.stationNo}
                                 </span>
                                 <div className="flex items-center gap-2">
-                                  <Link
-                                    href={`/dashboard/asset-types?category=${m.category || 'MACHINE'}&type=${m.type}`}
-                                    className="text-slate-500 hover:text-indigo-600 font-semibold flex items-center gap-0.5 transition"
-                                    title="Inspect technical specifications, SOP, and checklists for this type"
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenCatalog(m.category || 'MACHINE', m.type)}
+                                    className="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 font-semibold px-2 py-0.5 rounded-lg border border-indigo-200 flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                                    title="Inspect technical specifications, SOP, and checklists for this asset type"
                                   >
-                                    <span>Specs</span>
-                                  </Link>
+                                    <BookOpen className="w-3 h-3 text-indigo-600" />
+                                    <span>Specs / Catalog</span>
+                                  </button>
                                   <span className="text-slate-300">•</span>
                                   <span className="font-mono text-slate-400">${m.cost || 0}</span>
                                   <button
@@ -1046,13 +1190,27 @@ export default function FloorTrackerPage() {
                           <LayoutGrid className="w-3 h-3 text-amber-600" />
                           <span>Table</span>
                         </span>
-                        {ws.table && (
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              ws.table.status === 'BREAKDOWN' ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'
-                            }`}
-                          />
-                        )}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenCatalog('TABLE', ws.table?.type);
+                            }}
+                            className="text-[9px] text-amber-800 hover:text-amber-950 bg-amber-100 hover:bg-amber-200 px-1 py-0.2 rounded flex items-center gap-0.5 transition cursor-pointer"
+                            title="Table Type Catalog"
+                          >
+                            <BookOpen className="w-2.5 h-2.5" />
+                            <span>Catalog</span>
+                          </button>
+                          {ws.table && (
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                ws.table.status === 'BREAKDOWN' ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'
+                              }`}
+                            />
+                          )}
+                        </div>
                       </div>
                       <div className="font-bold text-slate-800 truncate text-[11px] mt-1">
                         {ws.table ? ws.table.id : 'Unassigned'}
@@ -1078,13 +1236,27 @@ export default function FloorTrackerPage() {
                           <Wrench className="w-3 h-3 text-indigo-600" />
                           <span>Machinery</span>
                         </span>
-                        {ws.machine && (
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              ws.machine.status === 'BREAKDOWN' ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'
-                            }`}
-                          />
-                        )}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenCatalog('MACHINE', ws.machine?.type);
+                            }}
+                            className="text-[9px] text-indigo-800 hover:text-indigo-950 bg-indigo-100 hover:bg-indigo-200 px-1 py-0.2 rounded flex items-center gap-0.5 transition cursor-pointer"
+                            title="Machine Type Catalog"
+                          >
+                            <BookOpen className="w-2.5 h-2.5" />
+                            <span>Catalog</span>
+                          </button>
+                          {ws.machine && (
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                ws.machine.status === 'BREAKDOWN' ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'
+                              }`}
+                            />
+                          )}
+                        </div>
                       </div>
                       <div className="font-bold text-slate-800 truncate text-[11px] mt-1">
                         {ws.machine ? ws.machine.id : 'No Machine'}
@@ -1110,13 +1282,27 @@ export default function FloorTrackerPage() {
                           <Armchair className="w-3 h-3 text-teal-600" />
                           <span>Seating</span>
                         </span>
-                        {ws.chair && (
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              ws.chair.status === 'BREAKDOWN' ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'
-                            }`}
-                          />
-                        )}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenCatalog('CHAIR', ws.chair?.type);
+                            }}
+                            className="text-[9px] text-teal-800 hover:text-teal-950 bg-teal-100 hover:bg-teal-200 px-1 py-0.2 rounded flex items-center gap-0.5 transition cursor-pointer"
+                            title="Chair Type Catalog"
+                          >
+                            <BookOpen className="w-2.5 h-2.5" />
+                            <span>Catalog</span>
+                          </button>
+                          {ws.chair && (
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                ws.chair.status === 'BREAKDOWN' ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'
+                              }`}
+                            />
+                          )}
+                        </div>
                       </div>
                       <div className="font-bold text-slate-800 truncate text-[11px] mt-1">
                         {ws.chair ? ws.chair.id : 'Unassigned'}
@@ -1142,13 +1328,27 @@ export default function FloorTrackerPage() {
                           <Lightbulb className="w-3 h-3 text-yellow-600" />
                           <span>Lighting</span>
                         </span>
-                        {ws.light && (
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              ws.light.status === 'BREAKDOWN' ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'
-                            }`}
-                          />
-                        )}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenCatalog('LIGHT', ws.light?.type);
+                            }}
+                            className="text-[9px] text-yellow-800 hover:text-yellow-950 bg-yellow-100 hover:bg-yellow-200 px-1 py-0.2 rounded flex items-center gap-0.5 transition cursor-pointer"
+                            title="Lighting Type Catalog"
+                          >
+                            <BookOpen className="w-2.5 h-2.5" />
+                            <span>Catalog</span>
+                          </button>
+                          {ws.light && (
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                ws.light.status === 'BREAKDOWN' ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'
+                              }`}
+                            />
+                          )}
+                        </div>
                       </div>
                       <div className="font-bold text-slate-800 truncate text-[11px] mt-1">
                         {ws.light ? ws.light.id : 'Shared High-Bay'}
@@ -1170,7 +1370,21 @@ export default function FloorTrackerPage() {
                         <span className="font-bold text-cyan-900 text-[11px]">{ws.fan.id}</span>
                         <span className="text-[10px] text-cyan-700 truncate">{ws.fan.specs}</span>
                       </div>
-                      <span className="text-[10px] font-semibold text-cyan-800 shrink-0">Vent</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenCatalog('FAN', ws.fan?.type);
+                          }}
+                          className="text-[9px] text-cyan-800 hover:text-cyan-950 bg-cyan-100 hover:bg-cyan-200 px-1.5 py-0.5 rounded flex items-center gap-0.5 transition cursor-pointer"
+                          title="Fan Type Catalog"
+                        >
+                          <BookOpen className="w-2.5 h-2.5" />
+                          <span>Catalog</span>
+                        </button>
+                        <span className="text-[10px] font-semibold text-cyan-800">Vent</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1185,6 +1399,15 @@ export default function FloorTrackerPage() {
         isOpen={isMoveModalOpen}
         onClose={() => setIsMoveModalOpen(false)}
         preselectedMachineId={targetMoveMachineId}
+      />
+
+      {/* Interactive Asset Type Catalog Modal */}
+      <AssetTypeCatalogModal
+        isOpen={isCatalogModalOpen}
+        onClose={() => setIsCatalogModalOpen(false)}
+        initialCategory={catalogCategory}
+        initialTypeId={catalogTypeId}
+        machines={machines}
       />
 
       {/* Add New Factory Asset Modal */}
