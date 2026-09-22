@@ -105,7 +105,7 @@ export interface Machine {
   typeName?: string; // e.g. "4 Thread Overlock"
   motorType?: MotorType;
   purchaseDate: string; // ISO format or YYYY-MM-DD
-  cost: number; // USD
+  cost: number; // INR (₹)
   status: MachineStatus;
   currentLine: FloorLine;
   stationNo: string; // e.g. "Station 04", "Cutting Bay", "Inspection Bay"
@@ -131,7 +131,7 @@ export interface SparePart {
   stock: number;
   minStock: number; // threshold for low-stock warning
   monthlyAllowance: number;
-  unitCost: number; // USD
+  unitCost: number; // INR (₹)
   unit: string; // e.g., "pcs", "units", "jugs"
   compatibleTypes: MachineType[];
 }
@@ -228,7 +228,7 @@ export interface PartRequisition {
   // For monthly indent with multiple items
   items?: RequisitionItem[];
   itemCount: number;
-  estimatedCost: number; // total USD
+  estimatedCost: number; // total INR (₹)
   urgency: RequisitionUrgency;
   requiresCeoApproval: boolean;
   requestedBy: string; // mechanic name

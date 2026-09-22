@@ -17,7 +17,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   Calendar,
-  DollarSign,
+  IndianRupee,
   AlertOctagon,
   Clock,
   User,
@@ -307,7 +307,7 @@ export default function InventoryPage() {
         });
 
         showToast(
-          `Monthly indent #${reqId} submitted with ${indentItems.length} parts (Total: $${indentTotalCost.toFixed(2)})!`,
+          `Monthly indent #${reqId} submitted with ${indentItems.length} parts (Total: ₹${indentTotalCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })})!`,
           'success'
         );
       } else if (reqMode === 'CRITICAL_CEO') {
@@ -584,7 +584,7 @@ export default function InventoryPage() {
                 Total Inventory Value
               </div>
               <div className="text-2xl font-extrabold text-slate-900 font-mono">
-                ${Math.round(totalValuation).toLocaleString()}
+                ₹{Math.round(totalValuation).toLocaleString('en-IN')}
               </div>
               <div className="text-[11px] text-slate-500">Tool crib stock valuation</div>
             </div>
@@ -643,7 +643,7 @@ export default function InventoryPage() {
                     <th className="py-3.5 px-4">Compatible Machines</th>
                     <th className="py-3.5 px-4">Stock on Hand</th>
                     <th className="py-3.5 px-4">Safety Buffer / Mo.</th>
-                    <th className="py-3.5 px-4">Unit Cost</th>
+                    <th className="py-3.5 px-4">Unit Cost (₹)</th>
                     <th className="py-3.5 px-4">Status</th>
                     <th className="py-3.5 px-4 text-right">Quick Adjust</th>
                   </tr>
@@ -677,7 +677,7 @@ export default function InventoryPage() {
                           <span className="text-slate-400">{part.monthlyAllowance} mo.</span>
                         </td>
                         <td className="py-3.5 px-4 font-mono font-semibold text-slate-800">
-                          ${part.unitCost.toFixed(2)}
+                          ₹{part.unitCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
                         <td className="py-3.5 px-4">
                           {isLow ? (
@@ -758,7 +758,7 @@ export default function InventoryPage() {
                 Total Sanctioned Value
               </div>
               <div className="text-2xl font-extrabold text-slate-900 font-mono">
-                ${Math.round(totalReqValue).toLocaleString()}
+                ₹{Math.round(totalReqValue).toLocaleString('en-IN')}
               </div>
               <div className="text-[11px] text-emerald-600 font-medium">
                 {approvedRequisitions.length} Approved orders
@@ -950,7 +950,7 @@ export default function InventoryPage() {
                             Indented Parts List ({req.items.length} Distinct Items):
                           </span>
                           <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
-                            Total Est. Budget: ${req.estimatedCost.toFixed(2)}
+                            Total Est. Budget: ₹{req.estimatedCost?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </span>
                         </div>
 
@@ -962,8 +962,8 @@ export default function InventoryPage() {
                                 <th className="py-2 px-3">Part Description</th>
                                 <th className="py-2 px-3">SKU</th>
                                 <th className="py-2 px-3">Quantity</th>
-                                <th className="py-2 px-3">Unit Cost</th>
-                                <th className="py-2 px-3 text-right">Subtotal</th>
+                                <th className="py-2 px-3">Unit Cost (₹)</th>
+                                <th className="py-2 px-3 text-right">Subtotal (₹)</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 font-medium">
@@ -977,10 +977,10 @@ export default function InventoryPage() {
                                     {item.quantity} {item.unit}
                                   </td>
                                   <td className="py-2 px-3 font-mono text-slate-600">
-                                    ${item.unitCost.toFixed(2)}
+                                    ₹{item.unitCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                   </td>
                                   <td className="py-2 px-3 font-mono font-bold text-slate-800 text-right">
-                                    ${item.totalCost.toFixed(2)}
+                                    ₹{item.totalCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                   </td>
                                 </tr>
                               ))}
@@ -1012,7 +1012,7 @@ export default function InventoryPage() {
                               {req.quantity} {req.unit}
                             </span>
                             <span className="font-bold font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                              Est. ${req.estimatedCost.toFixed(2)}
+                              Est. ₹{req.estimatedCost?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </span>
                           </div>
                         </div>
@@ -1260,7 +1260,7 @@ export default function InventoryPage() {
                         >
                           {parts.map((p) => (
                             <option key={p.partId} value={p.partId}>
-                              {p.name} ({p.sku}) — ${p.unitCost.toFixed(2)}/{p.unit}
+                              {p.name} ({p.sku}) — ₹{p.unitCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}/{p.unit}
                             </option>
                           ))}
                         </select>
@@ -1294,7 +1294,7 @@ export default function InventoryPage() {
                   <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
                     <div className="bg-slate-100 px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-600 flex justify-between">
                       <span>Itemized Indent List ({indentItems.length} Parts)</span>
-                      <span>Subtotal ($)</span>
+                      <span>Subtotal (₹)</span>
                     </div>
 
                     {indentItems.length === 0 ? (
@@ -1311,12 +1311,12 @@ export default function InventoryPage() {
                             <div className="min-w-0 flex-1 pr-2">
                               <div className="font-bold text-slate-900 truncate">{item.partName}</div>
                               <div className="text-[10px] text-slate-400 font-mono">
-                                SKU: {item.sku} • {item.quantity} {item.unit} @ ${item.unitCost.toFixed(2)}
+                                SKU: {item.sku} • {item.quantity} {item.unit} @ ₹{item.unitCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
                               <span className="font-bold font-mono text-slate-800">
-                                ${item.totalCost.toFixed(2)}
+                                ₹{item.totalCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                               </span>
                               <button
                                 type="button"
@@ -1335,7 +1335,7 @@ export default function InventoryPage() {
                     <div className="bg-slate-50 px-4 py-2.5 border-t border-slate-200 flex justify-between items-center font-bold text-xs">
                       <span className="text-slate-700">Total Monthly Indent Budget:</span>
                       <span className="font-mono text-base text-emerald-700">
-                        ${indentTotalCost.toFixed(2)}
+                        ₹{indentTotalCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>
@@ -1412,7 +1412,7 @@ export default function InventoryPage() {
                     >
                       {parts.map((p) => (
                         <option key={p.partId} value={p.partId}>
-                          {p.name} ({p.sku}) — Stock: {p.stock} {p.unit} (${p.unitCost.toFixed(2)}/unit)
+                          {p.name} ({p.sku}) — Stock: {p.stock} {p.unit} (₹{p.unitCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}/unit)
                         </option>
                       ))}
                       <option value="CUSTOM">Custom Urgent Spare</option>
@@ -1436,7 +1436,7 @@ export default function InventoryPage() {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">
-                        Estimated Cost ($ USD)
+                        Estimated Cost (₹ INR)
                       </label>
                       <input
                         type="number"
@@ -1522,7 +1522,7 @@ export default function InventoryPage() {
                     >
                       {parts.map((p) => (
                         <option key={p.partId} value={p.partId}>
-                          {p.name} ({p.sku}) — ${p.unitCost.toFixed(2)}/{p.unit}
+                          {p.name} ({p.sku}) — ₹{p.unitCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}/{p.unit}
                         </option>
                       ))}
                       <option value="CUSTOM">Custom Burnt Component / Emergency Part</option>
@@ -1562,7 +1562,7 @@ export default function InventoryPage() {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">
-                        Total Emergency Expenditure ($ USD) *
+                        Total Emergency Expenditure (₹ INR) *
                       </label>
                       <input
                         type="number"

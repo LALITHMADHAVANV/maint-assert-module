@@ -12,7 +12,7 @@ import {
   ShieldAlert,
   Zap,
   Building,
-  DollarSign,
+  IndianRupee,
   FileText,
   User,
   CheckCheck,
@@ -149,7 +149,7 @@ export default function CeoMessagesPage() {
               <span className="block text-[11px] uppercase tracking-wider text-purple-300 font-semibold">
                 Emergency Budget Impact
               </span>
-              <span className="text-2xl font-black text-amber-400">${pendingCapex.toFixed(2)}</span>
+              <span className="text-2xl font-black text-amber-400">₹{pendingCapex.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
         </div>
@@ -193,11 +193,11 @@ export default function CeoMessagesPage() {
 
         <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-            <DollarSign className="w-6 h-6" />
+            <IndianRupee className="w-6 h-6" />
           </div>
           <div>
             <div className="text-xs text-slate-500 font-medium">Total Emergency CapEx</div>
-            <div className="text-xl font-extrabold text-slate-900">${totalCapexRequested.toFixed(2)}</div>
+            <div className="text-xl font-extrabold text-slate-900">₹{totalCapexRequested.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
           </div>
         </div>
 
@@ -355,7 +355,7 @@ export default function CeoMessagesPage() {
                       <div className="text-right sm:border-l sm:pl-4 border-slate-200">
                         <div className="text-[10px] font-bold text-slate-400 uppercase">Emergency CapEx</div>
                         <div className="text-2xl font-black text-rose-600">
-                          ${req.estimatedCost?.toFixed(2)}
+                          ₹{req.estimatedCost?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </div>
                       </div>
                     </div>
@@ -481,11 +481,11 @@ export default function CeoMessagesPage() {
             <ul className="text-xs text-purple-900/80 space-y-2">
               <li className="flex items-start gap-1.5">
                 <span className="text-purple-600 font-bold">•</span>
-                <span><strong>Critical Needs ($100+):</strong> Halts export line sewing. Automatically routed to CEO inbox with high priority.</span>
+                <span><strong>Critical Needs (High Value / CapEx):</strong> Halts export line sewing. Automatically routed to CEO inbox with high priority.</span>
               </li>
               <li className="flex items-start gap-1.5">
                 <span className="text-purple-600 font-bold">•</span>
-                <span><strong>Urgent Needs (&lt;$100):</strong> Fast-tracked directly by Plant Maintenance Manager.</span>
+                <span><strong>Urgent Needs (Operational Spare):</strong> Fast-tracked directly by Plant Maintenance Manager.</span>
               </li>
               <li className="flex items-start gap-1.5">
                 <span className="text-purple-600 font-bold">•</span>

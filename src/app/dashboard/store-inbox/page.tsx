@@ -292,7 +292,7 @@ export default function StoreInboxPage() {
                           <span>Monthly Products Required Under Store Custody ({req.items?.length || 0} Parts):</span>
                         </span>
                         <span className="text-slate-500 font-mono">
-                          Allocation Total: <strong className="text-slate-900">${req.estimatedCost?.toFixed(2)}</strong>
+                          Allocation Total: <strong className="text-slate-900">₹{req.estimatedCost?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
                         </span>
                       </div>
 
@@ -303,8 +303,8 @@ export default function StoreInboxPage() {
                               <th className="py-2.5 px-3">Part Name & Specs</th>
                               <th className="py-2.5 px-3">SKU</th>
                               <th className="py-2.5 px-3 text-right">Quota Quantity</th>
-                              <th className="py-2.5 px-3 text-right">Unit Rate</th>
-                              <th className="py-2.5 px-3 text-right">Subtotal</th>
+                              <th className="py-2.5 px-3 text-right">Unit Rate (₹)</th>
+                              <th className="py-2.5 px-3 text-right">Subtotal (₹)</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
@@ -320,10 +320,10 @@ export default function StoreInboxPage() {
                                   {item.quantity} {item.unit}
                                 </td>
                                 <td className="py-2.5 px-3 text-right text-slate-500">
-                                  ${item.unitCost?.toFixed(2)}
+                                  ₹{item.unitCost?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                 </td>
                                 <td className="py-2.5 px-3 text-right font-bold text-slate-900">
-                                  ${item.totalCost?.toFixed(2)}
+                                  ₹{item.totalCost?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                 </td>
                               </tr>
                             ))}

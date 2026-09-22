@@ -36,7 +36,7 @@ import {
   Palette,
   Archive,
   MapPin,
-  DollarSign,
+  IndianRupee,
   UserCheck,
   Check,
   AlertCircle,
@@ -860,7 +860,7 @@ export default function FloorTrackerPage() {
               </span>
             </div>
             <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-white mt-2">
-              ${totalValuation.toLocaleString()}
+              ₹{totalValuation.toLocaleString('en-IN')}
             </div>
             <div className="text-xs text-slate-400 mt-1 flex items-center gap-2">
               <span className="text-white font-bold">{totalAssets} Units Registered</span>
@@ -943,7 +943,7 @@ export default function FloorTrackerPage() {
                 {categoryCounts.MACHINE || 0}
               </div>
               <div className="text-xs font-semibold text-indigo-600 font-mono">
-                ${(categoryValuations.MACHINE || 0).toLocaleString()}
+                ₹{(categoryValuations.MACHINE || 0).toLocaleString('en-IN')}
               </div>
             </div>
             <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
@@ -970,7 +970,7 @@ export default function FloorTrackerPage() {
                 {categoryCounts.TABLE || 0}
               </div>
               <div className="text-xs font-semibold text-amber-600 font-mono">
-                ${(categoryValuations.TABLE || 0).toLocaleString()}
+                ₹{(categoryValuations.TABLE || 0).toLocaleString('en-IN')}
               </div>
             </div>
             <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
@@ -997,7 +997,7 @@ export default function FloorTrackerPage() {
                 {categoryCounts.CHAIR || 0}
               </div>
               <div className="text-xs font-semibold text-teal-600 font-mono">
-                ${(categoryValuations.CHAIR || 0).toLocaleString()}
+                ₹{(categoryValuations.CHAIR || 0).toLocaleString('en-IN')}
               </div>
             </div>
             <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
@@ -1024,7 +1024,7 @@ export default function FloorTrackerPage() {
                 {categoryCounts.UTILITY || 0}
               </div>
               <div className="text-xs font-semibold text-purple-600 font-mono">
-                ${(categoryValuations.UTILITY || 0).toLocaleString()}
+                ₹{(categoryValuations.UTILITY || 0).toLocaleString('en-IN')}
               </div>
             </div>
             <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
@@ -1183,7 +1183,7 @@ export default function FloorTrackerPage() {
                           {deptAssets.length} Units
                         </span>
                         <div className="text-[10px] font-bold text-slate-400 font-mono mt-0.5">
-                          ${deptValuation.toLocaleString()}
+                          ₹{deptValuation.toLocaleString('en-IN')}
                         </div>
                       </div>
                     </div>
@@ -1248,7 +1248,7 @@ export default function FloorTrackerPage() {
                                 <div className="flex items-center gap-1.5 truncate">
                                   <span className="font-semibold text-slate-600 truncate">{m.stationNo}</span>
                                   <span>•</span>
-                                  <span className="font-mono font-medium text-slate-500">${m.cost || 0}</span>
+                                  <span className="font-mono font-medium text-slate-500">₹{(m.cost || 0).toLocaleString('en-IN')}</span>
                                 </div>
 
                                 <div className="flex items-center gap-1 shrink-0">
@@ -1371,7 +1371,7 @@ export default function FloorTrackerPage() {
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-200/50 text-[11px]">
-                    <span className="font-mono text-slate-700 font-bold">${m.cost || 0}</span>
+                    <span className="font-mono text-slate-700 font-bold">₹{(m.cost || 0).toLocaleString('en-IN')}</span>
                     <span className="text-indigo-600 font-bold group-hover:translate-x-0.5 transition flex items-center gap-0.5">
                       Inspect <ChevronRight className="w-3 h-3" />
                     </span>
@@ -1837,7 +1837,7 @@ export default function FloorTrackerPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Cost / Capital ($ USD)
+                    Cost / Capital (₹ INR)
                   </label>
                   <input
                     type="number"

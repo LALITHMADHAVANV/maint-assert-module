@@ -419,13 +419,13 @@ export default function MachinesPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Purchase Cost (USD)
+                  Purchase Cost (₹ INR)
                 </label>
                 <input
                   type="number"
                   value={mCost}
                   onChange={(e) => setMCost(parseFloat(e.target.value) || 0)}
-                  placeholder="750"
+                  placeholder="65000"
                   className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none font-mono font-medium text-slate-900"
                 />
               </div>

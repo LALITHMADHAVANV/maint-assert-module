@@ -15,7 +15,7 @@ import {
   ClipboardCheck,
   MapPin,
   Tag,
-  DollarSign,
+  IndianRupee,
   Clock,
   UserCheck,
   ArrowRightLeft,
@@ -984,11 +984,11 @@ export function AssetModal({
 
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                    <DollarSign className="w-3 h-3 text-amber-600" />
+                    <IndianRupee className="w-3 h-3 text-amber-600" />
                     <span>Valuation</span>
                   </div>
                   <div className="font-bold text-sm text-slate-900 mt-1 font-mono">
-                    ${currentAsset.cost?.toLocaleString() || '0'}
+                    ₹{currentAsset.cost?.toLocaleString('en-IN') || '0'}
                   </div>
                   <div className="text-[10px] text-slate-500">Asset Capital Cost</div>
                 </div>
