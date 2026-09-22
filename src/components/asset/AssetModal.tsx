@@ -24,12 +24,14 @@ import {
   SlidersHorizontal,
   ChevronRight,
   ShieldCheck,
+  Printer,
 } from 'lucide-react';
 import { Machine, FloorLine, AssetCategory, MachineStatus, RepairUrgency } from '@/types/cmms';
 import { createBreakdownTicket, relocateMachine, updateMachineStatus } from '@/lib/services/cmmsService';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
 import { getCategoryForType, SUBTYPE_LOOKUP } from '@/lib/machineCatalog';
+import { PrintableAssetDocumentModal } from '@/components/print/PrintableAssetDocumentModal';
 
 interface AssetModalProps {
   isOpen: boolean;
@@ -471,6 +473,7 @@ export function AssetModal({
     asset?.id || ''
   );
   const [activeTab, setActiveTab] = useState<'DETAILS' | 'REPORT' | 'RELOCATE'>('DETAILS');
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Breakdown Ticket Form
@@ -685,14 +688,25 @@ export function AssetModal({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
-            title="Close popup"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsPrintModalOpen(true)}
+              className="px-3 py-1.5 bg-indigo-600/80 hover:bg-indigo-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border border-indigo-400/40 shadow-xs"
+              title="Print Asset QR Tag or Equipment Document"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Print Tag / Doc</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              title="Close popup"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Category Switcher Pills */}
@@ -1188,23 +1202,34 @@ export function AssetModal({
               </div>
 
               {/* Action Buttons Footer */}
-              <div className="pt-2 border-t border-slate-200 flex items-center justify-end gap-2">
+              <div className="pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
                 <button
                   type="button"
-                  onClick={() => setActiveTab('REPORT')}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-300 transition flex items-center gap-1.5 cursor-pointer"
+                  onClick={() => setIsPrintModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition flex items-center gap-1.5 cursor-pointer shadow-xs"
                 >
-                  <AlertOctagon className="w-3.5 h-3.5" />
-                  <span>Report Breakdown</span>
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Tag &amp; Passport</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('RELOCATE')}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <ArrowRightLeft className="w-3.5 h-3.5" />
-                  <span>Relocate Station</span>
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('REPORT')}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-300 transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <AlertOctagon className="w-3.5 h-3.5" />
+                    <span>Report Breakdown</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('RELOCATE')}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                    <span>Relocate Station</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -1460,6 +1485,17 @@ export function AssetModal({
           )}
         </div>
       </div>
+
+      {/* Printable Asset Document Modal */}
+      {currentAsset && (
+        <PrintableAssetDocumentModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          asset={currentAsset}
+          allAssets={filteredCategoryAssets}
+          initialMode="TAG"
+        />
+      )}
     </div>
   );
 }

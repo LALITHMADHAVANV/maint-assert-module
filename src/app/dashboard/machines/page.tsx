@@ -7,6 +7,7 @@ import {
   Wrench,
   Tag,
   Printer,
+  FileText,
   Camera,
   Info,
   Search,
@@ -20,6 +21,7 @@ import { Machine, MachineType, MotorType, FloorLine, MachineStatus } from '@/typ
 import { subscribeMachines, createMachine } from '@/lib/services/cmmsService';
 import { useToast } from '@/context/ToastContext';
 import { ScanModal } from '@/components/scan/ScanModal';
+import { PrintableAssetDocumentModal } from '@/components/print/PrintableAssetDocumentModal';
 import {
   MACHINE_CATALOG,
   MachineCategoryGroup,
@@ -50,6 +52,11 @@ export default function MachinesPage() {
   // Scanner modal state
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
   const [scanModalTargetId, setScanModalTargetId] = useState<string>('');
+
+  // Print document modal state
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printModalMachine, setPrintModalMachine] = useState<Machine | null>(null);
+  const [printModalMode, setPrintModalMode] = useState<'TAG' | 'DOCUMENT' | 'BATCH'>('TAG');
 
   // Host origin for QR payload
   const [origin, setOrigin] = useState('https://textech.factory');
@@ -229,6 +236,35 @@ export default function MachinesPage() {
     showToast(`Loaded ${m.id} for QR preview and editing`, 'info');
   };
 
+  // Construct current active machine object for document preview & printing
+  const currentMachineObj: Machine = useMemo(() => {
+    const existing = machines.find((m) => m.id === mId);
+    return {
+      id: mId,
+      name: `${mBrand} ${mModel}`,
+      brand: mBrand,
+      model: mModel,
+      type: mType,
+      typeName: typeNameMap[mType],
+      cost: mCost,
+      motorType: mMotor,
+      currentLine: mLine,
+      stationNo: mStation,
+      purchaseDate: mDate,
+      status: existing?.status || 'ACTIVE',
+      category: 'MACHINE',
+      department: 'Sewing Floor',
+      operator: existing?.operator || 'Floor Operator',
+      previousLine: existing?.previousLine,
+      previousStation: existing?.previousStation,
+      lastMovedAt: existing?.lastMovedAt,
+      lastMovedReason: existing?.lastMovedReason,
+      lastMovedBy: existing?.lastMovedBy,
+      totalDowntimeMinutes: existing?.totalDowntimeMinutes || 0,
+      ageYears: existing?.ageYears || 1.5,
+    };
+  }, [mId, mBrand, mModel, mType, mCost, mMotor, mLine, mStation, mDate, machines, typeNameMap]);
+
   const handlePrint = () => {
     window.print();
   };
@@ -274,9 +310,9 @@ export default function MachinesPage() {
       </div>
 
       {/* Main Grid: Form (Left) & QR Tag Preview (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 no-print">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left 7 Columns: Machine Input Form */}
-        <div className="lg:col-span-7 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+        <div className="lg:col-span-7 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5 no-print">
           <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
             <Wrench className="w-4 h-4 text-indigo-600" />
             <span>Machine Specifications</span>
@@ -499,9 +535,9 @@ export default function MachinesPage() {
         </div>
 
         {/* Right 5 Columns: Printable QR Asset Tag Preview Card */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+        <div className="lg:col-span-5 space-y-4 print:w-full print:max-w-none print:m-0">
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4 print:border-none print:shadow-none print:p-0">
+            <div className="flex items-center justify-between no-print">
               <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
                 <Tag className="w-4 h-4 text-indigo-600" />
                 <span>Asset QR Tag Preview</span>
@@ -569,36 +605,64 @@ export default function MachinesPage() {
                 </div>
               </div>
 
+              {/* Where Held Before tracking info on printed tag */}
+              {currentMachineObj.previousLine && (
+                <div className="mt-2.5 pt-1.5 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-700 bg-slate-50 px-2 py-1 rounded">
+                  <span className="font-semibold text-slate-500">Held Before:</span>
+                  <span className="font-bold text-slate-900">
+                    {currentMachineObj.previousLine} {currentMachineObj.previousStation ? `(${currentMachineObj.previousStation})` : ''}
+                  </span>
+                </div>
+              )}
+
               <div className="mt-3 pt-2 border-t border-dashed border-slate-300 flex items-center justify-between text-[9px] text-slate-500 font-mono">
-                <span>Scan with phone or shop terminal</span>
+                <span>Motor: {mMotor || 'SERVO'}</span>
+                <span>Valuation: ₹{mCost?.toLocaleString('en-IN') || '75,000'}</span>
                 <span>Reg: {mDate || new Date().toISOString().slice(0, 10)}</span>
               </div>
             </div>
 
             {/* Tag Action Buttons */}
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex flex-col sm:flex-row items-center gap-2 pt-1 no-print">
               <button
+                type="button"
                 onClick={handlePrint}
-                className="flex-1 py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer shadow-sm"
+                className="w-full sm:flex-1 py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm"
+                title="Direct print thermal asset tag label"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>Print Asset Tag</span>
               </button>
               <button
+                type="button"
+                onClick={() => {
+                  setPrintModalMachine(currentMachineObj);
+                  setPrintModalMode('DOCUMENT');
+                  setIsPrintModalOpen(true);
+                }}
+                className="w-full sm:flex-1 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm"
+                title="Inspect printable document layout & equipment passport"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Document Preview</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   setScanModalTargetId(mId);
                   setIsScanModalOpen(true);
                 }}
-                className="flex-1 py-2.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer"
+                className="w-full sm:w-auto py-2.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                title="Simulate smartphone QR scan"
               >
                 <Camera className="w-3.5 h-3.5" />
-                <span>Test QR Scan Action</span>
+                <span>Scan</span>
               </button>
             </div>
           </div>
 
           {/* Floor Scan Information Box */}
-          <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950 space-y-1.5">
+          <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950 space-y-1.5 no-print">
             <div className="font-bold flex items-center gap-1.5 text-indigo-900">
               <Info className="w-4 h-4 text-indigo-600" />
               <span>Floor Scan Mechanics:</span>
@@ -721,6 +785,17 @@ export default function MachinesPage() {
                       </button>
                       <button
                         onClick={() => {
+                          setPrintModalMachine(m);
+                          setPrintModalMode('TAG');
+                          setIsPrintModalOpen(true);
+                        }}
+                        className="px-2.5 py-1 text-[11px] bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg transition"
+                        title="Print QR Tag or Equipment Document"
+                      >
+                        Print Tag / Doc
+                      </button>
+                      <button
+                        onClick={() => {
                           setScanModalTargetId(m.id);
                           setIsScanModalOpen(true);
                         }}
@@ -743,6 +818,17 @@ export default function MachinesPage() {
         onClose={() => setIsScanModalOpen(false)}
         preselectedMachineId={scanModalTargetId || mId}
       />
+
+      {/* Printable Asset Document Modal */}
+      {printModalMachine && (
+        <PrintableAssetDocumentModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          asset={printModalMachine}
+          allAssets={filteredMachines}
+          initialMode={printModalMode}
+        />
+      )}
     </div>
   );
 }

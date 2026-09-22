@@ -238,10 +238,32 @@ export function TeamScheduleModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-      <div className="bg-slate-50 rounded-3xl max-w-6xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-300 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto print:static print:p-0 print:bg-white print-modal-overlay">
+      <div className="bg-slate-50 rounded-3xl max-w-6xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-300 overflow-hidden animate-in fade-in zoom-in-95 duration-150 print:max-w-none print:w-full print:border-none print:shadow-none print:bg-white print:rounded-none print:overflow-visible print-modal-container">
+        
+        {/* Printed Document Header */}
+        <div className="hidden print:block border-b-2 border-slate-900 pb-3 mb-4 p-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-700">
+                TexTech Apparel Group &bull; Unit 03 Coimbatore
+              </div>
+              <h1 className="text-xl font-black text-slate-950 uppercase tracking-tight mt-0.5">
+                Senior Mechanic Duty Roster &amp; Dispatch Board
+              </h1>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Maintenance &amp; PPM Schedule &bull; Notice Board Release
+              </p>
+            </div>
+            <div className="text-right text-xs">
+              <div className="font-bold text-slate-950 font-mono">Date: {formattedDate}</div>
+              <div className="text-[10px] text-slate-600">Generated for factory technicians</div>
+            </div>
+          </div>
+        </div>
+
         {/* Modal Top Header */}
-        <div className="bg-slate-900 px-6 py-4 text-white flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
+        <div className="bg-slate-900 px-6 py-4 text-white flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 no-print">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center font-bold shadow-md shadow-indigo-500/25">
               <Users className="w-5 h-5" />
@@ -281,7 +303,7 @@ export function TeamScheduleModal({
         </div>
 
         {/* Date Selector & Day Stepper Toolbar */}
-        <div className="bg-white px-6 py-3.5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+        <div className="bg-white px-6 py-3.5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 no-print">
           {/* Day Navigation Controls */}
           <div className="flex items-center gap-2">
             <button

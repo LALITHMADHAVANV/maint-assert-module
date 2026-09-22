@@ -150,9 +150,33 @@ export default function MechanicRosterPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 print:p-0 print:m-0 print:max-w-none">
+      {/* Official Factory Shift Sheet Header (Printed Notice Board Format) */}
+      <div className="hidden print:block border-b-2 border-slate-900 pb-3 mb-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-700">
+              TexTech Apparel Group &bull; Unit 03 Coimbatore
+            </div>
+            <h1 className="text-xl font-black text-slate-950 uppercase tracking-tight mt-0.5">
+              Daily Master Mechanic Duty Allocation &amp; Floor Shift Sheet
+            </h1>
+            <p className="text-xs text-slate-600 mt-0.5">
+              Maintenance &amp; Mechanical Engineering Division &bull; Notice Board Release
+            </p>
+          </div>
+          <div className="text-right text-xs">
+            <div className="font-bold text-slate-950 font-mono">Date: {formattedDate}</div>
+            <div className="text-[10px] text-slate-600">Supervisor: {user?.name || 'Ramesh Kumar (Master Tech)'}</div>
+            <span className="inline-block mt-1 px-2 py-0.5 text-[9px] font-black bg-slate-900 text-white rounded uppercase">
+              Shift: Day (08:00 - 17:30)
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-6 shadow-xl border border-indigo-900/50">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-6 shadow-xl border border-indigo-900/50 no-print">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -189,7 +213,7 @@ export default function MechanicRosterPage() {
       </div>
 
       {/* Date Stepper Toolbar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
         <div className="flex items-center gap-2">
           <button
             onClick={handleToday}
@@ -529,7 +553,7 @@ export default function MechanicRosterPage() {
               </div>
 
               {/* Footer */}
-              <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 print:bg-white">
                 <span className="flex items-center gap-1 font-mono">
                   <Phone className="w-3.5 h-3.5 text-slate-400" />
                   <span>{mechanic.phone}</span>
@@ -540,6 +564,25 @@ export default function MechanicRosterPage() {
               </div>
             </div>
           ))}
+      </div>
+
+      {/* Printed Roster Sign-Off Footer */}
+      <div className="hidden print:grid grid-cols-3 gap-8 pt-8 mt-8 border-t-2 border-slate-900 text-xs print-break-inside-avoid">
+        <div>
+          <div className="font-bold text-slate-900">Shift Supervisor:</div>
+          <div className="border-b border-slate-400 mt-8" />
+          <div className="text-[10px] text-slate-500 mt-1">Signature &amp; Time</div>
+        </div>
+        <div>
+          <div className="font-bold text-slate-900">Master Mechanic In-Charge:</div>
+          <div className="border-b border-slate-400 mt-8" />
+          <div className="text-[10px] text-slate-500 mt-1">Signature &amp; Work Verified</div>
+        </div>
+        <div>
+          <div className="font-bold text-slate-900">Plant Maintenance Engineer:</div>
+          <div className="border-b border-slate-400 mt-8" />
+          <div className="text-[10px] text-slate-500 mt-1">Audit Approval &amp; File</div>
+        </div>
       </div>
     </div>
   );
