@@ -422,12 +422,22 @@ export function ScanModal({
                   required
                   className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800"
                 >
-                  <option value="Line 01">Line 01 (Polo / Knit)</option>
-                  <option value="Line 02">Line 02 (T-Shirts Basic)</option>
-                  <option value="Line 03">Line 03 (Woven Shirts)</option>
-                  <option value="Line 04">Line 04 (Denim Bottoms)</option>
-                  <option value="Buffer Workshop">Workshop Buffer (Standby Area)</option>
-                  <option value="Scrap Bay">Decommission / Parts Cannibalization</option>
+                  <optgroup label="🧵 Sewing Floor Lines">
+                    <option value="Line 01">Sewing Floor - Line 01 (Polos / Knits)</option>
+                    <option value="Line 02">Sewing Floor - Line 02 (T-Shirts Basic)</option>
+                    <option value="Line 03">Sewing Floor - Line 03 (Woven Shirts)</option>
+                    <option value="Line 04">Sewing Floor - Line 04 (Denim Heavy)</option>
+                  </optgroup>
+                  <optgroup label="🏢 Plant Departments">
+                    <option value="Cutting Department">Fabric Cutting Department</option>
+                    <option value="Finishing & Pressing">Finishing & Steam Pressing</option>
+                    <option value="Embroidery & Printing">Embroidery & Printing Unit</option>
+                    <option value="Quality & Packing">Quality Assurance & Packing</option>
+                    <option value="Warehouse & Storage">Warehouse & Raw Materials</option>
+                    <option value="Central Utilities & Plant">Central Utilities & Power Plant</option>
+                    <option value="Maintenance Workshop">Maintenance Workshop & Tool Bay</option>
+                    <option value="Scrap Bay">Decommission / Scrap Salvage Bay</option>
+                  </optgroup>
                 </select>
               </div>
 

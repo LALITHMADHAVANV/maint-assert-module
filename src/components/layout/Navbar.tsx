@@ -247,7 +247,7 @@ export function Navbar() {
         highlight: true,
       },
       {
-        label: 'Floor Grid',
+        label: '🏭 Factory Assets',
         href: '/dashboard/floor-tracker',
         icon: Layers,
       },
@@ -280,7 +280,7 @@ export function Navbar() {
         badgeColor: 'bg-amber-400 text-slate-950 font-extrabold',
       },
       {
-        label: '5. Asset Floor Grid',
+        label: '5. 🏭 Factory Assets',
         href: '/dashboard/floor-tracker',
         icon: Layers,
       },

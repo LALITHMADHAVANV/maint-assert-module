@@ -49,13 +49,31 @@ export type MachineStatus =
   | 'UNDER_MAINTENANCE'
   | 'SCRAP';
 
+export type FactoryDepartment =
+  | 'Sewing Floor'
+  | 'Cutting Department'
+  | 'Finishing & Pressing'
+  | 'Embroidery & Printing'
+  | 'Quality & Packing'
+  | 'Warehouse & Storage'
+  | 'Central Utilities & Plant'
+  | 'Maintenance Workshop'
+  | 'Scrap Bay';
+
 export type FloorLine =
   | 'Line 01'
   | 'Line 02'
   | 'Line 03'
   | 'Line 04'
   | 'Buffer Workshop'
-  | 'Scrap Bay';
+  | 'Scrap Bay'
+  | 'Cutting Department'
+  | 'Finishing & Pressing'
+  | 'Embroidery & Printing'
+  | 'Quality & Packing'
+  | 'Warehouse & Storage'
+  | 'Central Utilities & Plant'
+  | 'Maintenance Workshop';
 
 export interface Machine {
   id: string; // e.g., "MC-SNLS-101", "TBL-CUT-101", "CHR-ERG-101", "LGT-HBY-101", "FAN-CEIL-101"
@@ -63,6 +81,7 @@ export interface Machine {
   brand: string; // "Juki", "Featherlite", "Philips", "Almonard", "Eastman", "Godrej"
   model: string; // "DDL-8700-7", "Optima-360", "120W-LED"
   category?: AssetCategory; // Defaults to 'MACHINE' if absent
+  department?: FactoryDepartment; // Factory department or plant section
   type: MachineType;
   typeName?: string; // e.g. "Single Needle Lockstitch (SNLS)"
   motorType?: MotorType;

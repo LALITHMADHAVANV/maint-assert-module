@@ -332,19 +332,29 @@ export default function MachinesPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Assigned Floor Line
+                  Assigned Factory Department / Line
                 </label>
                 <select
                   value={mLine}
                   onChange={(e) => setMLine(e.target.value as FloorLine)}
                   className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-slate-800 font-semibold"
                 >
-                  <option value="Line 01">Line 01 (Polo / Knit)</option>
-                  <option value="Line 02">Line 02 (T-Shirts Basic)</option>
-                  <option value="Line 03">Line 03 (Woven Shirts)</option>
-                  <option value="Line 04">Line 04 (Denim Bottoms)</option>
-                  <option value="Buffer Workshop">Buffer Workshop (Standby)</option>
-                  <option value="Scrap Bay">Scrap Bay (Decommissioned)</option>
+                  <optgroup label="🧵 Sewing Floor Lines">
+                    <option value="Line 01">Sewing Floor - Line 01</option>
+                    <option value="Line 02">Sewing Floor - Line 02</option>
+                    <option value="Line 03">Sewing Floor - Line 03</option>
+                    <option value="Line 04">Sewing Floor - Line 04</option>
+                  </optgroup>
+                  <optgroup label="🏢 Plant Departments">
+                    <option value="Cutting Department">Fabric Cutting Department</option>
+                    <option value="Finishing & Pressing">Finishing & Steam Pressing</option>
+                    <option value="Embroidery & Printing">Embroidery & Printing</option>
+                    <option value="Quality & Packing">Quality Assurance & Packing</option>
+                    <option value="Warehouse & Storage">Warehouse & Raw Materials</option>
+                    <option value="Central Utilities & Plant">Central Utilities & Power Plant</option>
+                    <option value="Maintenance Workshop">Maintenance Workshop & Tool Bay</option>
+                    <option value="Scrap Bay">Scrap & Salvage Bay</option>
+                  </optgroup>
                 </select>
               </div>
               <div>
@@ -518,12 +528,18 @@ export default function MachinesPage() {
               onChange={(e) => setFilterLine(e.target.value)}
               className="text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none text-slate-700 font-medium"
             >
-              <option value="ALL">All Lines</option>
-              <option value="Line 01">Line 01</option>
-              <option value="Line 02">Line 02</option>
-              <option value="Line 03">Line 03</option>
-              <option value="Line 04">Line 04</option>
-              <option value="Buffer Workshop">Buffer Workshop</option>
+              <option value="ALL">All Factory Locations</option>
+              <option value="Line 01">Sewing - Line 01</option>
+              <option value="Line 02">Sewing - Line 02</option>
+              <option value="Line 03">Sewing - Line 03</option>
+              <option value="Line 04">Sewing - Line 04</option>
+              <option value="Cutting Department">Cutting Dept</option>
+              <option value="Finishing & Pressing">Finishing & Pressing</option>
+              <option value="Embroidery & Printing">Embroidery & Printing</option>
+              <option value="Quality & Packing">Quality & Packing</option>
+              <option value="Warehouse & Storage">Warehouse & Storage</option>
+              <option value="Central Utilities & Plant">Utilities & Plant</option>
+              <option value="Maintenance Workshop">Maintenance Workshop</option>
               <option value="Scrap Bay">Scrap Bay</option>
             </select>
           </div>

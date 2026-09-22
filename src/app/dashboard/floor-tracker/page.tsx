@@ -13,6 +13,7 @@ import {
   Clock,
   ShieldCheck,
   Building,
+  Building2,
   Search,
   Filter,
   Wrench,
@@ -29,17 +30,135 @@ import {
   Boxes,
   HelpCircle,
   ChevronRight,
+  Scissors,
+  Zap,
+  Palette,
+  Archive,
+  MapPin,
+  DollarSign,
+  UserCheck,
 } from 'lucide-react';
-import { Machine, FloorLine, AssetCategory, MachineType, MachineStatus } from '@/types/cmms';
+import {
+  Machine,
+  FloorLine,
+  AssetCategory,
+  MachineType,
+  MachineStatus,
+  FactoryDepartment,
+} from '@/types/cmms';
 import { subscribeMachines, createMachine, resetToSeedData } from '@/lib/services/cmmsService';
 import { ScanModal } from '@/components/scan/ScanModal';
 import { AssetModal } from '@/components/asset/AssetModal';
 import { useToast } from '@/context/ToastContext';
 
-interface LineDefinition {
-  name: FloorLine;
-  desc: string;
+export interface DepartmentDefinition {
+  id: FactoryDepartment;
+  name: string;
+  shortDesc: string;
+  head: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
   badgeBg: string;
+}
+
+export const FACTORY_DEPARTMENTS: DepartmentDefinition[] = [
+  {
+    id: 'Cutting Department',
+    name: 'Fabric Cutting Department',
+    shortDesc: 'Automated spreading tables, band knife cutters & inspection frames',
+    head: 'R. Periasamy (Cutting Master)',
+    icon: Scissors,
+    color: 'text-rose-600',
+    badgeBg: 'bg-rose-600',
+  },
+  {
+    id: 'Sewing Floor',
+    name: 'Sewing & Assembly Floor',
+    shortDesc: 'Production lines 01–04, lockstitch/overlock, workstations & task lights',
+    head: 'K. Senthil Nathan (Floor In-Charge)',
+    icon: Factory,
+    color: 'text-indigo-600',
+    badgeBg: 'bg-indigo-600',
+  },
+  {
+    id: 'Finishing & Pressing',
+    name: 'Finishing & Steam Pressing',
+    shortDesc: 'Vacuum ironing decks, high-pressure steam boiler lines & cooling blowers',
+    head: 'K. Subramani (Finishing Supervisor)',
+    icon: Flame,
+    color: 'text-amber-600',
+    badgeBg: 'bg-amber-600',
+  },
+  {
+    id: 'Embroidery & Printing',
+    name: 'Embroidery & Screen Printing Unit',
+    shortDesc: 'Multi-head computerized embroidery machines, heat press & rotary printing',
+    head: 'M. Senthil (Embroidery Head)',
+    icon: Palette,
+    color: 'text-purple-600',
+    badgeBg: 'bg-purple-600',
+  },
+  {
+    id: 'Quality & Packing',
+    name: 'Quality Assurance & Packing Deck',
+    shortDesc: 'Overhead D65 inspection canopies, conveyor needle detectors & carton tapers',
+    head: 'D. Kalpana (QA Lead)',
+    icon: ShieldCheck,
+    color: 'text-emerald-600',
+    badgeBg: 'bg-emerald-600',
+  },
+  {
+    id: 'Warehouse & Storage',
+    name: 'Warehouse & Material Handling',
+    shortDesc: 'Fabric roll cantilever racks, electric hydraulic pallet trucks & weight platforms',
+    head: 'A. Manoharan (Store Manager)',
+    icon: Boxes,
+    color: 'text-blue-600',
+    badgeBg: 'bg-blue-600',
+  },
+  {
+    id: 'Central Utilities & Plant',
+    name: 'Central Utilities & Power Plant',
+    shortDesc: 'Rotary screw air compressors, 250kVA diesel genset, water softener & sub-station',
+    head: 'Chief Electrical Engineer',
+    icon: Zap,
+    color: 'text-yellow-600',
+    badgeBg: 'bg-yellow-600',
+  },
+  {
+    id: 'Maintenance Workshop',
+    name: 'Maintenance Workshop & Tool Crib',
+    shortDesc: 'Heavy toolroom lathes, mechanic workbenches, parts storage & buffer standby',
+    head: 'Ramesh Kumar (Senior Mechanic)',
+    icon: Wrench,
+    color: 'text-cyan-600',
+    badgeBg: 'bg-cyan-600',
+  },
+  {
+    id: 'Scrap Bay',
+    name: 'Scrap & Salvage Yard',
+    shortDesc: 'Decommissioned frames, parts harvesting & metal recycling staging',
+    head: 'Salvage Officer',
+    icon: Archive,
+    color: 'text-slate-600',
+    badgeBg: 'bg-slate-600',
+  },
+];
+
+export function getAssetDepartment(asset: Machine): FactoryDepartment {
+  if (asset.department) return asset.department;
+  const line = asset.currentLine || '';
+  if (line.includes('Cutting')) return 'Cutting Department';
+  if (line.includes('Finishing')) return 'Finishing & Pressing';
+  if (line.includes('Embroidery') || line.includes('Printing')) return 'Embroidery & Printing';
+  if (line.includes('Quality') || line.includes('Packing')) return 'Quality & Packing';
+  if (line.includes('Warehouse')) return 'Warehouse & Storage';
+  if (line.includes('Utilities') || line.includes('Boiler') || line.includes('Compressor'))
+    return 'Central Utilities & Plant';
+  if (line.includes('Buffer') || line.includes('Workshop') || line.includes('Maintenance'))
+    return 'Maintenance Workshop';
+  if (line.includes('Scrap') || line.includes('Salvage')) return 'Scrap Bay';
+  return 'Sewing Floor';
 }
 
 export function getCategoryMeta(category?: AssetCategory) {
@@ -143,20 +262,22 @@ export default function FloorTrackerPage() {
   };
 
   // Filters & Views
+  const [selectedDepartment, setSelectedDepartment] = useState<FactoryDepartment | 'ALL'>('ALL');
   const [activeCategory, setActiveCategory] = useState<AssetCategory | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLineFilter, setSelectedLineFilter] = useState<string>('ALL');
-  const [viewMode, setViewMode] = useState<'LINES' | 'WORKSTATIONS'>('LINES');
+  const [viewMode, setViewMode] = useState<'DEPARTMENTS' | 'ASSETS' | 'WORKSTATIONS'>('DEPARTMENTS');
 
   // New Asset Form State
   const [newCategory, setNewCategory] = useState<AssetCategory>('TABLE');
+  const [newDepartment, setNewDepartment] = useState<FactoryDepartment>('Cutting Department');
   const [newId, setNewId] = useState(`TBL-CUT-${Math.floor(100 + Math.random() * 900)}`);
   const [newName, setNewName] = useState('');
-  const [newBrand, setNewBrand] = useState('Featherlite');
-  const [newModel, setNewModel] = useState('HeavyCraft-100');
-  const [newLine, setNewLine] = useState<FloorLine>('Line 01');
-  const [newStation, setNewStation] = useState('Station 04');
-  const [newCost, setNewCost] = useState<number>(250);
+  const [newBrand, setNewBrand] = useState('Eastman');
+  const [newModel, setNewModel] = useState('SpreadMaster-Pro');
+  const [newLine, setNewLine] = useState<FloorLine>('Cutting Department');
+  const [newStation, setNewStation] = useState('Cutting Bay 01');
+  const [newCost, setNewCost] = useState<number>(1400);
   const [newSpecs, setNewSpecs] = useState('');
   const [newStatus, setNewStatus] = useState<MachineStatus>('ACTIVE');
 
@@ -203,7 +324,7 @@ export default function FloorTrackerPage() {
     setIsSyncing(true);
     try {
       await resetToSeedData();
-      showToast('Successfully synchronized all 40+ factory assets across lines and workstations!', 'success');
+      showToast('Successfully synchronized all 45+ factory plant assets across all departments!', 'success');
     } catch (err) {
       showToast('Error syncing factory asset database', 'error');
     } finally {
@@ -219,7 +340,7 @@ export default function FloorTrackerPage() {
   );
 
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = {
+    const counts: Record<AssetCategory, number> = {
       MACHINE: 0,
       TABLE: 0,
       CHAIR: 0,
@@ -234,117 +355,106 @@ export default function FloorTrackerPage() {
     return counts;
   }, [machines]);
 
-  const statusCounts = useMemo(() => {
-    let active = 0;
-    let breakdown = 0;
-    let buffer = 0;
-    let scrap = 0;
+  const categoryValuations = useMemo(() => {
+    const vals: Record<AssetCategory, number> = {
+      MACHINE: 0,
+      TABLE: 0,
+      CHAIR: 0,
+      LIGHT: 0,
+      FAN: 0,
+      UTILITY: 0,
+    };
     machines.forEach((m) => {
-      if (m.status === 'ACTIVE') active++;
-      else if (m.status === 'BREAKDOWN') breakdown++;
-      else if (m.status === 'BUFFER') buffer++;
-      else if (m.status === 'SCRAP') scrap++;
+      const cat = m.category || 'MACHINE';
+      vals[cat] = (vals[cat] || 0) + (m.cost || 0);
     });
-    return { active, breakdown, buffer, scrap };
+    return vals;
   }, [machines]);
 
-  const floorLines: LineDefinition[] = [
-    {
-      name: 'Line 01',
-      desc: 'Polo Shirt & Knit Seam Line',
-      badgeBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    },
-    {
-      name: 'Line 02',
-      desc: 'Basic T-Shirt Assembly Line',
-      badgeBg: 'bg-blue-50 text-blue-700 border-blue-200',
-    },
-    {
-      name: 'Line 03',
-      desc: 'Woven Shirts & Buttoning Line',
-      badgeBg: 'bg-purple-50 text-purple-700 border-purple-200',
-    },
-    {
-      name: 'Line 04',
-      desc: 'Denim & Twill Heavy Line',
-      badgeBg: 'bg-slate-100 text-slate-700 border-slate-300',
-    },
-    {
-      name: 'Buffer Workshop',
-      desc: 'Mechanic Bay & Standby Pool',
-      badgeBg: 'bg-amber-50 text-amber-700 border-amber-200',
-    },
-    {
-      name: 'Scrap Bay',
-      desc: 'Cannibalization & Salvage Rack',
-      badgeBg: 'bg-rose-50 text-rose-700 border-rose-200',
-    },
-  ];
+  // Department counts
+  const departmentCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    machines.forEach((m) => {
+      const dept = getAssetDepartment(m);
+      counts[dept] = (counts[dept] || 0) + 1;
+    });
+    return counts;
+  }, [machines]);
 
-  // Filtering
+  // Filtered Assets Master
   const filteredAssets = useMemo(() => {
     return machines.filter((m) => {
       // Category filter
-      const cat = m.category || 'MACHINE';
-      if (activeCategory !== 'ALL' && cat !== activeCategory) return false;
-
-      // Line filter
-      if (selectedLineFilter !== 'ALL' && m.currentLine !== selectedLineFilter) return false;
-
+      if (activeCategory !== 'ALL' && (m.category || 'MACHINE') !== activeCategory) {
+        return false;
+      }
+      // Department filter
+      const dept = getAssetDepartment(m);
+      if (selectedDepartment !== 'ALL' && dept !== selectedDepartment) {
+        return false;
+      }
+      // Line filter if specified
+      if (selectedLineFilter !== 'ALL' && m.currentLine !== selectedLineFilter) {
+        return false;
+      }
       // Search query
       if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const matchId = m.id.toLowerCase().includes(query);
-        const matchBrand = (m.brand || '').toLowerCase().includes(query);
-        const matchModel = (m.model || '').toLowerCase().includes(query);
-        const matchStation = (m.stationNo || '').toLowerCase().includes(query);
-        const matchName = (m.name || '').toLowerCase().includes(query);
-        const matchOperator = (m.operator || '').toLowerCase().includes(query);
-        const matchSpecs = (m.specs || '').toLowerCase().includes(query);
-        if (!matchId && !matchBrand && !matchModel && !matchStation && !matchName && !matchOperator && !matchSpecs) {
-          return false;
-        }
+        const q = searchQuery.toLowerCase();
+        const idMatch = m.id.toLowerCase().includes(q);
+        const nameMatch = m.name?.toLowerCase().includes(q) || false;
+        const brandMatch = m.brand.toLowerCase().includes(q);
+        const modelMatch = m.model.toLowerCase().includes(q);
+        const stationMatch = m.stationNo.toLowerCase().includes(q);
+        const deptMatch = dept.toLowerCase().includes(q);
+        const lineMatch = m.currentLine.toLowerCase().includes(q);
+        const specsMatch = m.specs?.toLowerCase().includes(q) || false;
+        const opMatch = m.operator?.toLowerCase().includes(q) || false;
+        return (
+          idMatch ||
+          nameMatch ||
+          brandMatch ||
+          modelMatch ||
+          stationMatch ||
+          deptMatch ||
+          lineMatch ||
+          specsMatch ||
+          opMatch
+        );
       }
-
       return true;
     });
-  }, [machines, activeCategory, selectedLineFilter, searchQuery]);
+  }, [machines, activeCategory, selectedDepartment, selectedLineFilter, searchQuery]);
 
-  // Workstation Setup Matrix grouping
+  // Workstation Matrix specifically for Sewing Lines
   const workstationMatrix = useMemo(() => {
+    const sewingMachines = machines.filter((m) => getAssetDepartment(m) === 'Sewing Floor');
     const map: Record<
       string,
       {
         line: FloorLine;
         station: string;
         table?: Machine;
-        machine?: Machine;
         chair?: Machine;
+        machine?: Machine;
         light?: Machine;
         fan?: Machine;
-        utility?: Machine;
-        others: Machine[];
       }
     > = {};
 
-    machines.forEach((item) => {
-      if (item.currentLine === 'Scrap Bay') return;
-      const key = `${item.currentLine}___${item.stationNo}`;
+    sewingMachines.forEach((m) => {
+      const key = `${m.currentLine}-${m.stationNo}`;
       if (!map[key]) {
         map[key] = {
-          line: item.currentLine,
-          station: item.stationNo,
-          others: [],
+          line: m.currentLine,
+          station: m.stationNo,
         };
       }
-      const cat = item.category || 'MACHINE';
-      if (cat === 'TABLE' && !map[key].table) map[key].table = item;
-      else if (cat === 'MACHINE' && !map[key].machine) map[key].machine = item;
-      else if (cat === 'CHAIR' && !map[key].chair) map[key].chair = item;
-      else if (cat === 'LIGHT' && !map[key].light) map[key].light = item;
-      else if (cat === 'FAN' && !map[key].fan) map[key].fan = item;
-      else if (cat === 'UTILITY' && !map[key].utility) map[key].utility = item;
-      else map[key].others.push(item);
+      const cat = m.category || 'MACHINE';
+      if (cat === 'TABLE') map[key].table = m;
+      else if (cat === 'CHAIR') map[key].chair = m;
+      else if (cat === 'LIGHT') map[key].light = m;
+      else if (cat === 'FAN') map[key].fan = m;
+      else if (cat === 'MACHINE') map[key].machine = m;
     });
 
     let list = Object.values(map);
@@ -364,17 +474,23 @@ export default function FloorTrackerPage() {
     const rnd = Math.floor(100 + Math.random() * 900);
     switch (cat) {
       case 'TABLE':
-        setNewId(`TBL-SEW-${rnd}`);
-        setNewBrand('Featherlite');
-        setNewModel('StitchDesk-Pro');
-        setNewCost(180);
-        setNewSpecs('Laminated top with metric measurement rule & drawer');
+        setNewId(`TBL-CUT-${rnd}`);
+        setNewBrand('Eastman');
+        setNewModel('SpreadMaster-12');
+        setNewCost(1400);
+        setNewDepartment('Cutting Department');
+        setNewLine('Cutting Department');
+        setNewStation('Cutting Bay 01');
+        setNewSpecs('Air flotation laminated top with metric measuring rule');
         break;
       case 'CHAIR':
         setNewId(`CHR-ERG-${rnd}`);
         setNewBrand('Featherlite');
         setNewModel('Optima-Sew360');
         setNewCost(85);
+        setNewDepartment('Sewing Floor');
+        setNewLine('Line 01');
+        setNewStation('Station 04');
         setNewSpecs('Ergonomic gas-lift pneumatic swivel chair with lumbar support');
         break;
       case 'LIGHT':
@@ -382,29 +498,41 @@ export default function FloorTrackerPage() {
         setNewBrand('Philips');
         setNewModel('CoreLine-150W');
         setNewCost(130);
+        setNewDepartment('Cutting Department');
+        setNewLine('Cutting Department');
+        setNewStation('Overhead Spreading Bay');
         setNewSpecs('150W Linear High-Bay LED, 6500K Cool Daylight, IP65');
         break;
       case 'FAN':
         setNewId(`FAN-IND-${rnd}`);
-        setNewBrand('Havells');
-        setNewModel('IndusAir-56');
-        setNewCost(70);
-        setNewSpecs('56-inch aluminum heavy aeroblades, 320 RPM copper motor');
+        setNewBrand('Almonard');
+        setNewModel('HeavyBlower-30');
+        setNewCost(135);
+        setNewDepartment('Finishing & Pressing');
+        setNewLine('Finishing & Pressing');
+        setNewStation('Pressing Line A');
+        setNewSpecs('30-inch industrial blade, 18,000 CFM rapid steam and heat dispersion');
         break;
       case 'UTILITY':
         setNewId(`UTL-SYS-${rnd}`);
-        setNewBrand('Silver Star');
-        setNewModel('UtilityMaster');
-        setNewCost(1200);
-        setNewSpecs('Plant support infrastructure with safety shutoff valve');
+        setNewBrand('Atlas Copco');
+        setNewModel('G-11-FF');
+        setNewCost(3200);
+        setNewDepartment('Central Utilities & Plant');
+        setNewLine('Central Utilities & Plant');
+        setNewStation('Compressor Room');
+        setNewSpecs('11 kW 10 bar continuous compressed air for pneumatic tools');
         break;
       case 'MACHINE':
       default:
-        setNewId(`MC-SNLS-${rnd}`);
-        setNewBrand('Juki');
-        setNewModel('DDL-8700-7');
-        setNewCost(750);
-        setNewSpecs('Direct-drive servo, auto trimmer, 5000 RPM');
+        setNewId(`MC-CUT-${rnd}`);
+        setNewBrand('Eastman');
+        setNewModel('EC-900-Air');
+        setNewCost(3600);
+        setNewDepartment('Cutting Department');
+        setNewLine('Cutting Department');
+        setNewStation('Cutting Bay 01');
+        setNewSpecs('Precision band knife with variable speed inverter');
         break;
     }
   };
@@ -427,10 +555,11 @@ export default function FloorTrackerPage() {
 
     const newAsset: Machine = {
       id: newId.trim().toUpperCase(),
-      name: newName.trim() || `${newBrand} ${getCategoryMeta(newCategory).label} (${newLine})`,
+      name: newName.trim() || `${newBrand} ${getCategoryMeta(newCategory).label} (${newStation})`,
       brand: newBrand.trim() || 'Generic',
       model: newModel.trim() || 'Standard',
       category: newCategory,
+      department: newDepartment,
       type: typeMapping[newCategory],
       typeName: `${newBrand} ${getCategoryMeta(newCategory).label}`,
       purchaseDate: new Date().toISOString().split('T')[0],
@@ -445,7 +574,7 @@ export default function FloorTrackerPage() {
 
     try {
       await createMachine(newAsset);
-      showToast(`Asset ${newAsset.id} registered and staged at ${newLine}!`, 'success');
+      showToast(`Asset ${newAsset.id} registered and stationed at ${newDepartment} (${newStation})!`, 'success');
       setIsAddModalOpen(false);
     } catch (err) {
       showToast('Failed to register asset', 'error');
@@ -459,23 +588,28 @@ export default function FloorTrackerPage() {
         <div>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-indigo-600/10 text-indigo-600 flex items-center justify-center font-bold">
-              <Layers className="w-5 h-5" />
+              <Building2 className="w-5 h-5" />
             </div>
             <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-              Factory Asset Floor Grid & Staging Suite
+              Factory Asset Management & Plant Directory
             </h2>
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-              Floor Active
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Plant Online</span>
+            </span>
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-300">
+              Factory-Wide Scope
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1 max-w-3xl">
-            Live interactive audit of all factory physical assets across every sewing line and workstation. Tracks{' '}
-            <strong className="text-slate-700">machinery</strong>,{' '}
-            <strong className="text-slate-700">work tables</strong>,{' '}
-            <strong className="text-slate-700">ergonomic chairs</strong>,{' '}
-            <strong className="text-slate-700">lighting fixtures</strong>,{' '}
-            <strong className="text-slate-700">ventilation fans</strong>, and{' '}
-            <strong className="text-slate-700">utilities</strong>.
+            Live operational audit of all physical factory assets across every plant department:{' '}
+            <strong className="text-slate-700">Cutting</strong>,{' '}
+            <strong className="text-slate-700">Sewing Production</strong>,{' '}
+            <strong className="text-slate-700">Finishing & Pressing</strong>,{' '}
+            <strong className="text-slate-700">Embroidery & Printing</strong>,{' '}
+            <strong className="text-slate-700">Quality & Packing</strong>,{' '}
+            <strong className="text-slate-700">Warehouse</strong>, and{' '}
+            <strong className="text-slate-700">Central Utilities</strong>.
           </p>
         </div>
 
@@ -484,8 +618,8 @@ export default function FloorTrackerPage() {
             type="button"
             onClick={handleSyncAllAssets}
             disabled={isSyncing}
-            className="text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs"
-            title="Reset and sync all 40+ realistic apparel factory assets"
+            className="text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+            title="Reset and sync all 45+ factory plant assets"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${isSyncing ? 'animate-spin' : ''}`} />
             <span>{isSyncing ? 'Syncing...' : 'Sync Factory Data'}</span>
@@ -494,10 +628,10 @@ export default function FloorTrackerPage() {
           <button
             type="button"
             onClick={() => {
-              handleCategoryChangeInForm('TABLE');
+              handleCategoryChangeInForm('MACHINE');
               setIsAddModalOpen(true);
             }}
-            className="text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm active:scale-95"
+            className="text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add Factory Asset</span>
@@ -540,14 +674,16 @@ export default function FloorTrackerPage() {
           }`}
         >
           <div className="space-y-1">
-            <div className="flex items-center justify-between text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
+            <div className="flex items-center justify-between text-[10px] font-bold text-indigo-700 uppercase tracking-wider">
               <span>Machinery</span>
               <Wrench className="w-3.5 h-3.5 text-indigo-600" />
             </div>
             <div className="text-xl font-extrabold text-slate-900 font-mono">
               {categoryCounts.MACHINE || 0}
             </div>
-            <div className="text-[11px] text-slate-500 truncate">Sewing & Cutting</div>
+            <div className="text-[11px] text-slate-500 font-medium">
+              ${(categoryValuations.MACHINE || 0).toLocaleString()}
+            </div>
           </div>
           <button
             type="button"
@@ -555,15 +691,15 @@ export default function FloorTrackerPage() {
               e.stopPropagation();
               handleOpenAssetModal(undefined, 'MACHINE');
             }}
-            className="mt-2 text-[10px] font-bold text-indigo-700 bg-indigo-100/90 hover:bg-indigo-200 border border-indigo-200 px-2 py-1 rounded-xl flex items-center justify-between transition cursor-pointer"
+            className="mt-2 text-[10px] font-bold text-indigo-800 bg-indigo-100/90 hover:bg-indigo-200 border border-indigo-200 px-2 py-1 rounded-xl flex items-center justify-between transition cursor-pointer"
             title="Inspect Machinery Category & Specs"
           >
             <span>Inspect Specs</span>
-            <ChevronRight className="w-3 h-3 text-indigo-500" />
+            <ChevronRight className="w-3 h-3 text-indigo-600" />
           </button>
         </div>
 
-        {/* 🪵 Work Tables */}
+        {/* 📐 Work Tables */}
         <div
           onClick={() => setActiveCategory(activeCategory === 'TABLE' ? 'ALL' : 'TABLE')}
           className={`p-3.5 rounded-2xl border shadow-xs cursor-pointer transition flex flex-col justify-between ${
@@ -580,7 +716,9 @@ export default function FloorTrackerPage() {
             <div className="text-xl font-extrabold text-slate-900 font-mono">
               {categoryCounts.TABLE || 0}
             </div>
-            <div className="text-[11px] text-slate-500 truncate">Cutting & Beds</div>
+            <div className="text-[11px] text-slate-500 font-medium">
+              ${(categoryValuations.TABLE || 0).toLocaleString()}
+            </div>
           </div>
           <button
             type="button"
@@ -588,15 +726,15 @@ export default function FloorTrackerPage() {
               e.stopPropagation();
               handleOpenAssetModal(undefined, 'TABLE');
             }}
-            className="mt-2 text-[10px] font-bold text-amber-800 bg-amber-100/90 hover:bg-amber-200 border border-amber-200 px-2 py-1 rounded-xl flex items-center justify-between transition cursor-pointer"
-            title="Inspect Tables Category & Specs"
+            className="mt-2 text-[10px] font-bold text-amber-800 bg-amber-100/90 hover:bg-indigo-200 border border-amber-200 px-2 py-1 rounded-xl flex items-center justify-between transition cursor-pointer"
+            title="Inspect Work Tables Category & Specs"
           >
             <span>Inspect Specs</span>
             <ChevronRight className="w-3 h-3 text-amber-600" />
           </button>
         </div>
 
-        {/* 🪑 Chairs & Seating */}
+        {/* 🪑 Chairs */}
         <div
           onClick={() => setActiveCategory(activeCategory === 'CHAIR' ? 'ALL' : 'CHAIR')}
           className={`p-3.5 rounded-2xl border shadow-xs cursor-pointer transition flex flex-col justify-between ${
@@ -607,13 +745,15 @@ export default function FloorTrackerPage() {
         >
           <div className="space-y-1">
             <div className="flex items-center justify-between text-[10px] font-bold text-teal-700 uppercase tracking-wider">
-              <span>Chairs & Seats</span>
+              <span>Chairs</span>
               <Armchair className="w-3.5 h-3.5 text-teal-600" />
             </div>
             <div className="text-xl font-extrabold text-slate-900 font-mono">
               {categoryCounts.CHAIR || 0}
             </div>
-            <div className="text-[11px] text-slate-500 truncate">Swivel & Stools</div>
+            <div className="text-[11px] text-slate-500 font-medium">
+              ${(categoryValuations.CHAIR || 0).toLocaleString()}
+            </div>
           </div>
           <button
             type="button"
@@ -629,7 +769,7 @@ export default function FloorTrackerPage() {
           </button>
         </div>
 
-        {/* 💡 Lighting Fixtures */}
+        {/* 💡 Lighting */}
         <div
           onClick={() => setActiveCategory(activeCategory === 'LIGHT' ? 'ALL' : 'LIGHT')}
           className={`p-3.5 rounded-2xl border shadow-xs cursor-pointer transition flex flex-col justify-between ${
@@ -646,7 +786,9 @@ export default function FloorTrackerPage() {
             <div className="text-xl font-extrabold text-slate-900 font-mono">
               {categoryCounts.LIGHT || 0}
             </div>
-            <div className="text-[11px] text-slate-500 truncate">High-Bay & Task</div>
+            <div className="text-[11px] text-slate-500 font-medium">
+              ${(categoryValuations.LIGHT || 0).toLocaleString()}
+            </div>
           </div>
           <button
             type="button"
@@ -662,7 +804,7 @@ export default function FloorTrackerPage() {
           </button>
         </div>
 
-        {/* 💨 Fans & Ventilation */}
+        {/* 🌀 Fans */}
         <div
           onClick={() => setActiveCategory(activeCategory === 'FAN' ? 'ALL' : 'FAN')}
           className={`p-3.5 rounded-2xl border shadow-xs cursor-pointer transition flex flex-col justify-between ${
@@ -673,13 +815,15 @@ export default function FloorTrackerPage() {
         >
           <div className="space-y-1">
             <div className="flex items-center justify-between text-[10px] font-bold text-cyan-700 uppercase tracking-wider">
-              <span>Fans & Air</span>
+              <span>Fans & HVAC</span>
               <Fan className="w-3.5 h-3.5 text-cyan-600" />
             </div>
             <div className="text-xl font-extrabold text-slate-900 font-mono">
               {categoryCounts.FAN || 0}
             </div>
-            <div className="text-[11px] text-slate-500 truncate">Ceiling & Blowers</div>
+            <div className="text-[11px] text-slate-500 font-medium">
+              ${(categoryValuations.FAN || 0).toLocaleString()}
+            </div>
           </div>
           <button
             type="button"
@@ -695,7 +839,7 @@ export default function FloorTrackerPage() {
           </button>
         </div>
 
-        {/* ⚡ Utilities & Plant */}
+        {/* ⚡ Utilities */}
         <div
           onClick={() => setActiveCategory(activeCategory === 'UTILITY' ? 'ALL' : 'UTILITY')}
           className={`p-3.5 rounded-2xl border shadow-xs cursor-pointer transition flex flex-col justify-between ${
@@ -712,7 +856,9 @@ export default function FloorTrackerPage() {
             <div className="text-xl font-extrabold text-slate-900 font-mono">
               {categoryCounts.UTILITY || 0}
             </div>
-            <div className="text-[11px] text-slate-500 truncate">Boilers & Compressors</div>
+            <div className="text-[11px] text-slate-500 truncate">
+              ${(categoryValuations.UTILITY || 0).toLocaleString()}
+            </div>
           </div>
           <button
             type="button"
@@ -726,6 +872,63 @@ export default function FloorTrackerPage() {
             <span>Inspect Specs</span>
             <ChevronRight className="w-3 h-3 text-purple-600" />
           </button>
+        </div>
+      </div>
+
+      {/* FACTORY DEPARTMENT TABS STRIP */}
+      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+            <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Factory Departments & Plant Sections</span>
+          </span>
+          <span className="text-[11px] text-slate-400 font-medium">
+            Showing {selectedDepartment === 'ALL' ? 'Entire Factory Plant' : selectedDepartment}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => setSelectedDepartment('ALL')}
+            className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              selectedDepartment === 'ALL'
+                ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+            }`}
+          >
+            <Building className="w-3.5 h-3.5" />
+            <span>All Plant ({totalAssets})</span>
+          </button>
+
+          {FACTORY_DEPARTMENTS.map((dept) => {
+            const DeptIcon = dept.icon;
+            const isSelected = selectedDepartment === dept.id;
+            const count = departmentCounts[dept.id] || 0;
+
+            return (
+              <button
+                key={dept.id}
+                type="button"
+                onClick={() => setSelectedDepartment(dept.id)}
+                className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                  isSelected
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <DeptIcon className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : dept.color}`} />
+                <span>{dept.name.replace('Department', 'Dept')}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -743,7 +946,7 @@ export default function FloorTrackerPage() {
                   : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
               }`}
             >
-              <span>All Factory Assets</span>
+              <span>All Classes</span>
               <span className="text-[10px] bg-white/20 px-1.5 py-0.2 rounded-full font-mono">
                 {totalAssets}
               </span>
@@ -775,7 +978,7 @@ export default function FloorTrackerPage() {
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Work Tables</span>
+              <span>Tables</span>
               <span className="text-[10px] bg-amber-200/60 text-amber-900 px-1.5 py-0.2 rounded-full font-mono">
                 {categoryCounts.TABLE || 0}
               </span>
@@ -791,7 +994,7 @@ export default function FloorTrackerPage() {
               }`}
             >
               <Armchair className="w-3.5 h-3.5" />
-              <span>Chairs & Seating</span>
+              <span>Chairs</span>
               <span className="text-[10px] bg-teal-200/60 text-teal-900 px-1.5 py-0.2 rounded-full font-mono">
                 {categoryCounts.CHAIR || 0}
               </span>
@@ -823,7 +1026,7 @@ export default function FloorTrackerPage() {
               }`}
             >
               <Fan className="w-3.5 h-3.5" />
-              <span>Fans & Air</span>
+              <span>Fans</span>
               <span className="text-[10px] bg-cyan-200/60 text-cyan-900 px-1.5 py-0.2 rounded-full font-mono">
                 {categoryCounts.FAN || 0}
               </span>
@@ -851,33 +1054,45 @@ export default function FloorTrackerPage() {
             <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs font-semibold">
               <button
                 type="button"
-                onClick={() => setViewMode('LINES')}
-                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-                  viewMode === 'LINES'
+                onClick={() => setViewMode('DEPARTMENTS')}
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
+                  viewMode === 'DEPARTMENTS'
                     ? 'bg-white text-indigo-700 shadow-xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Factory className="w-3.5 h-3.5" />
-                <span>Line Distribution View</span>
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Department View</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('ASSETS')}
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
+                  viewMode === 'ASSETS'
+                    ? 'bg-white text-indigo-700 shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Asset Grid</span>
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('WORKSTATIONS')}
-                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
                   viewMode === 'WORKSTATIONS'
                     ? 'bg-white text-indigo-700 shadow-xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
-                <span>Workstation Matrix</span>
+                <span>Sewing Workstations</span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* Search & Line Filter Bar */}
+        {/* Search & Secondary Filter Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100">
           <div className="relative w-full sm:w-80">
             <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
@@ -885,13 +1100,13 @@ export default function FloorTrackerPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by ID, Model, Station, Specs, Operator..."
+              placeholder="Search by ID, Model, Dept, Specs, Operator..."
               className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white text-slate-800 transition"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
+                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -899,74 +1114,78 @@ export default function FloorTrackerPage() {
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-            <div className="flex items-center gap-1 text-xs text-slate-500">
-              <Filter className="w-3.5 h-3.5 text-slate-400" />
-              <span>Filter Line:</span>
-            </div>
-            <select
-              value={selectedLineFilter}
-              onChange={(e) => setSelectedLineFilter(e.target.value)}
-              className="text-xs bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="ALL">All Lines & Zones (6)</option>
-              <option value="Line 01">Line 01 (Polo Shirt & Knit)</option>
-              <option value="Line 02">Line 02 (Basic T-Shirt)</option>
-              <option value="Line 03">Line 03 (Woven Shirts)</option>
-              <option value="Line 04">Line 04 (Denim Heavy)</option>
-              <option value="Buffer Workshop">Buffer Workshop (Standby)</option>
-              <option value="Scrap Bay">Scrap Bay (Salvage)</option>
-            </select>
-
-            <div className="text-xs font-semibold text-slate-500 pl-2">
-              Showing <strong className="text-indigo-600">{filteredAssets.length}</strong> items
+            <div className="text-xs font-semibold text-slate-500">
+              Showing <span className="text-slate-900 font-bold">{filteredAssets.length}</span> of{' '}
+              <span className="text-slate-700">{totalAssets}</span> factory assets
             </div>
           </div>
         </div>
       </div>
 
-      {/* VIEW MODE A: 6 Line Distribution Grid */}
-      {viewMode === 'LINES' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {floorLines
-            .filter((l) => selectedLineFilter === 'ALL' || l.name === selectedLineFilter)
-            .map((line) => {
-              const lineAssets = filteredAssets.filter((m) => m.currentLine === line.name);
-              const lineDownCount = lineAssets.filter((m) => m.status === 'BREAKDOWN').length;
+      {/* VIEW MODE 1: FACTORY DEPARTMENTS VIEW (Default) */}
+      {viewMode === 'DEPARTMENTS' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {FACTORY_DEPARTMENTS.filter(
+              (dept) => selectedDepartment === 'ALL' || dept.id === selectedDepartment
+            ).map((dept) => {
+              const deptAssets = filteredAssets.filter((m) => getAssetDepartment(m) === dept.id);
+              const allDeptAssets = machines.filter((m) => getAssetDepartment(m) === dept.id);
+              const deptDownCount = allDeptAssets.filter((m) => m.status === 'BREAKDOWN').length;
+              const deptValuation = allDeptAssets.reduce((sum, m) => sum + (m.cost || 0), 0);
+              const DeptIcon = dept.icon;
 
               return (
                 <div
-                  key={line.name}
-                  className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3 flex flex-col justify-between"
+                  key={dept.id}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3 flex flex-col justify-between hover:shadow-md transition"
                 >
                   <div>
-                    {/* Line Header */}
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <h4 className="font-extrabold text-slate-900 text-sm tracking-tight">
-                            {line.name}
-                          </h4>
-                          {lineDownCount > 0 && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 border border-rose-200 animate-pulse">
-                              {lineDownCount} Faulty
-                            </span>
-                          )}
+                    {/* Department Header */}
+                    <div className="flex items-start justify-between border-b border-slate-100 pb-3 gap-2">
+                      <div className="flex items-start gap-2.5">
+                        <div
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${dept.badgeBg}/10 ${dept.color}`}
+                        >
+                          <DeptIcon className="w-5 h-5" />
                         </div>
-                        <span className="text-[11px] text-slate-400 block truncate">{line.desc}</span>
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="font-extrabold text-slate-900 text-sm tracking-tight">
+                              {dept.name}
+                            </h4>
+                            {deptDownCount > 0 && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 border border-rose-200 animate-pulse">
+                                {deptDownCount} Defect
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-medium text-slate-400 block truncate">
+                            {dept.head}
+                          </span>
+                        </div>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 font-mono">
-                        {lineAssets.length} Assets
-                      </span>
+
+                      <div className="text-right shrink-0">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 font-mono">
+                          {deptAssets.length} Units
+                        </span>
+                        <div className="text-[10px] font-semibold text-slate-400 font-mono mt-0.5">
+                          ${deptValuation.toLocaleString()}
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Staged Assets List */}
+                    <p className="text-[11px] text-slate-500 pt-1 leading-snug">{dept.shortDesc}</p>
+
+                    {/* Staged Assets in Department */}
                     <div className="space-y-2.5 mt-3 max-h-96 overflow-y-auto pr-1">
-                      {lineAssets.length === 0 ? (
+                      {deptAssets.length === 0 ? (
                         <p className="text-xs text-slate-400 italic py-6 text-center">
-                          No matching assets staged in this zone.
+                          No matching assets found in this department.
                         </p>
                       ) : (
-                        lineAssets.map((m) => {
+                        deptAssets.map((m) => {
                           const meta = getCategoryMeta(m.category);
                           const IconComp = meta.icon;
 
@@ -1008,7 +1227,9 @@ export default function FloorTrackerPage() {
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <span className={`w-2 h-2 rounded-full ${dotColor}`} />
-                                  <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${badgeClass}`}>
+                                  <span
+                                    className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${badgeClass}`}
+                                  >
                                     {m.status}
                                   </span>
                                 </div>
@@ -1026,7 +1247,7 @@ export default function FloorTrackerPage() {
                                 </div>
                               </div>
 
-                              {/* Specs snippet if available */}
+                              {/* Specs snippet */}
                               {m.specs && (
                                 <div className="text-[10px] text-slate-500 bg-white/70 px-2 py-1 rounded border border-slate-200/60 truncate">
                                   {m.specs}
@@ -1035,7 +1256,7 @@ export default function FloorTrackerPage() {
 
                               {/* Footer Details & Manage Button */}
                               <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-200/50">
-                                <span className="font-semibold text-indigo-700 bg-indigo-50/60 px-1.5 py-0.5 rounded">
+                                <span className="font-semibold text-indigo-700 bg-indigo-50/60 px-1.5 py-0.5 rounded truncate max-w-[120px]">
                                   {m.stationNo}
                                 </span>
                                 <div className="flex items-center gap-2">
@@ -1061,7 +1282,7 @@ export default function FloorTrackerPage() {
                                     }}
                                     className="text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5 transition cursor-pointer"
                                   >
-                                    <span>Manage</span>
+                                    <span>Relocate</span>
                                     <ArrowRight className="w-2.5 h-2.5" />
                                   </button>
                                 </div>
@@ -1075,20 +1296,100 @@ export default function FloorTrackerPage() {
                 </div>
               );
             })}
+          </div>
         </div>
       )}
 
-      {/* VIEW MODE B: Workstation Setup Matrix (Station-by-Station Bird's Eye View) */}
+      {/* VIEW MODE 2: ALL ASSETS MASTER GRID */}
+      {viewMode === 'ASSETS' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {filteredAssets.map((m) => {
+              const meta = getCategoryMeta(m.category);
+              const IconComp = meta.icon;
+              const dept = getAssetDepartment(m);
+
+              const isDown = m.status === 'BREAKDOWN';
+              const isBuffer = m.status === 'BUFFER';
+              const isScrap = m.status === 'SCRAP';
+
+              return (
+                <div
+                  key={m.id}
+                  onClick={() => handleOpenAssetModal(m)}
+                  className="bg-slate-50/80 hover:bg-slate-100/90 border border-slate-200 rounded-2xl p-3 text-xs transition space-y-2 cursor-pointer flex flex-col justify-between"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-5 h-5 rounded-lg flex items-center justify-center border text-[11px] ${meta.color}`}>
+                          <IconComp className="w-3 h-3" />
+                        </span>
+                        <span className="font-mono font-bold text-slate-900">{m.id}</span>
+                      </div>
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                          isDown
+                            ? 'bg-rose-50 border-rose-200 text-rose-700'
+                            : isBuffer
+                            ? 'bg-amber-50 border-amber-200 text-amber-700'
+                            : isScrap
+                            ? 'bg-slate-100 border-slate-300 text-slate-600'
+                            : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                        }`}
+                      >
+                        {m.status}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h5 className="font-semibold text-slate-900 text-xs truncate">
+                        {m.name || `${m.brand} ${m.model}`}
+                      </h5>
+                      <span className="text-[10px] text-slate-400 block truncate">
+                        {dept} • {m.stationNo}
+                      </span>
+                    </div>
+
+                    {m.specs && (
+                      <p className="text-[10px] text-slate-500 bg-white/70 px-2 py-1 rounded border border-slate-200/60 truncate">
+                        {m.specs}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 text-[10px]">
+                    <span className="font-mono text-slate-600 font-bold">${m.cost || 0}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenAssetModal(m);
+                      }}
+                      className="text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5"
+                    >
+                      <span>Details</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* VIEW MODE 3: SEWING WORKSTATIONS MATRIX */}
       {viewMode === 'WORKSTATIONS' && (
         <div className="space-y-4">
           <div className="bg-gradient-to-r from-indigo-900 to-slate-900 text-white p-4 rounded-2xl flex items-center justify-between">
             <div>
               <h3 className="font-bold text-sm tracking-tight flex items-center gap-2">
                 <LayoutGrid className="w-4 h-4 text-indigo-300" />
-                <span>Garment Line Workstation Bundles Matrix</span>
+                <span>Sewing Floor Workstation Matrix (Lines 01–04)</span>
               </h3>
               <p className="text-xs text-indigo-200 mt-0.5">
-                Displays the complete physical workstation setup (Work Table + Sewing Machine + Chair + Task Light + Fan) at each line station.
+                Displays the physical workstation setup (Work Table + Sewing Machine + Chair + Task Light + Fan) at each line station.
               </p>
             </div>
             <span className="text-xs font-mono font-bold bg-white/10 px-3 py-1 rounded-xl border border-white/20">
@@ -1158,19 +1459,10 @@ export default function FloorTrackerPage() {
                           <LayoutGrid className="w-3 h-3 text-amber-600" />
                           <span>Table</span>
                         </span>
-                        {ws.table && (
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              ws.table.status === 'BREAKDOWN' ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'
-                            }`}
-                          />
-                        )}
-                      </div>
-                      <div className="font-bold text-slate-800 truncate text-[11px] mt-1">
-                        {ws.table ? ws.table.id : 'Unassigned'}
+                        <span className="font-mono text-[9px]">{ws.table?.id || 'EMPTY'}</span>
                       </div>
                       <div className="text-[9px] text-slate-500 truncate">
-                        {ws.table ? `${ws.table.brand} Table` : 'Standard Line Stand'}
+                        {ws.table ? ws.table.model : 'No Table Staged'}
                       </div>
                     </div>
 
@@ -1191,19 +1483,10 @@ export default function FloorTrackerPage() {
                           <Wrench className="w-3 h-3 text-indigo-600" />
                           <span>Machinery</span>
                         </span>
-                        {ws.machine && (
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              ws.machine.status === 'BREAKDOWN' ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'
-                            }`}
-                          />
-                        )}
-                      </div>
-                      <div className="font-bold text-slate-800 truncate text-[11px] mt-1">
-                        {ws.machine ? ws.machine.id : 'No Machine'}
+                        <span className="font-mono text-[9px]">{ws.machine?.id || 'EMPTY'}</span>
                       </div>
                       <div className="text-[9px] text-slate-500 truncate">
-                        {ws.machine ? `${ws.machine.brand} • ${ws.machine.type}` : 'Buffer Stage'}
+                        {ws.machine ? `${ws.machine.brand} ${ws.machine.type}` : 'No Machine'}
                       </div>
                     </div>
 
@@ -1224,19 +1507,10 @@ export default function FloorTrackerPage() {
                           <Armchair className="w-3 h-3 text-teal-600" />
                           <span>Seating</span>
                         </span>
-                        {ws.chair && (
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              ws.chair.status === 'BREAKDOWN' ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'
-                            }`}
-                          />
-                        )}
-                      </div>
-                      <div className="font-bold text-slate-800 truncate text-[11px] mt-1">
-                        {ws.chair ? ws.chair.id : 'Unassigned'}
+                        <span className="font-mono text-[9px]">{ws.chair?.id || 'EMPTY'}</span>
                       </div>
                       <div className="text-[9px] text-slate-500 truncate">
-                        {ws.chair ? ws.chair.model : 'Floor Stool'}
+                        {ws.chair ? ws.chair.brand : 'Operator Stool'}
                       </div>
                     </div>
 
@@ -1257,16 +1531,7 @@ export default function FloorTrackerPage() {
                           <Lightbulb className="w-3 h-3 text-yellow-600" />
                           <span>Lighting</span>
                         </span>
-                        {ws.light && (
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              ws.light.status === 'BREAKDOWN' ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'
-                            }`}
-                          />
-                        )}
-                      </div>
-                      <div className="font-bold text-slate-800 truncate text-[11px] mt-1">
-                        {ws.light ? ws.light.id : 'Shared High-Bay'}
+                        <span className="font-mono text-[9px]">{ws.light?.id || 'EMPTY'}</span>
                       </div>
                       <div className="text-[9px] text-slate-500 truncate">
                         {ws.light ? ws.light.brand : 'Line Illumination'}
@@ -1274,7 +1539,7 @@ export default function FloorTrackerPage() {
                     </div>
                   </div>
 
-                  {/* Fan or Utility Accessory bar */}
+                  {/* Fan Accessory bar */}
                   {ws.fan && (
                     <div
                       onClick={() => handleOpenAssetModal(ws.fan!)}
@@ -1319,17 +1584,19 @@ export default function FloorTrackerPage() {
             <div className="bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 p-5 text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-indigo-600/30 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
-                  <Plus className="w-5 h-5" />
+                  <Building2 className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="font-bold text-sm tracking-tight">Register Factory Asset</h3>
-                  <p className="text-[11px] text-indigo-300">Add tables, chairs, machinery, lights, or fans to floor grid</p>
+                  <p className="text-[11px] text-indigo-300">
+                    Add physical assets to any factory department or plant section
+                  </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                className="text-slate-400 hover:text-white transition"
+                className="text-slate-400 hover:text-white transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1343,22 +1610,23 @@ export default function FloorTrackerPage() {
                 </label>
                 <div className="grid grid-cols-3 gap-1.5 text-xs font-semibold">
                   {[
+                    { id: 'MACHINE', label: 'Machinery', icon: Wrench },
                     { id: 'TABLE', label: 'Work Table', icon: LayoutGrid },
                     { id: 'CHAIR', label: 'Chair / Seat', icon: Armchair },
-                    { id: 'MACHINE', label: 'Machinery', icon: Wrench },
                     { id: 'LIGHT', label: 'Lighting', icon: Lightbulb },
                     { id: 'FAN', label: 'Fan / Vent', icon: Fan },
                     { id: 'UTILITY', label: 'Plant Utility', icon: Flame },
                   ].map((cat) => {
                     const CatIcon = cat.icon;
+                    const isSelected = newCategory === cat.id;
                     return (
                       <button
                         key={cat.id}
                         type="button"
                         onClick={() => handleCategoryChangeInForm(cat.id as AssetCategory)}
-                        className={`p-2 rounded-xl border transition flex items-center gap-1.5 justify-center ${
-                          newCategory === cat.id
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                        className={`p-2 rounded-xl border transition flex items-center gap-1.5 justify-center cursor-pointer ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-xs'
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                         }`}
                       >
@@ -1370,7 +1638,29 @@ export default function FloorTrackerPage() {
                 </div>
               </div>
 
-              {/* ID & Brand */}
+              {/* Department Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Target Factory Department *
+                </label>
+                <select
+                  value={newDepartment}
+                  onChange={(e) => {
+                    const dept = e.target.value as FactoryDepartment;
+                    setNewDepartment(dept);
+                    setNewLine(dept as FloorLine);
+                  }}
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800 font-medium"
+                >
+                  {FACTORY_DEPARTMENTS.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* ID & Station */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
@@ -1381,91 +1671,66 @@ export default function FloorTrackerPage() {
                     value={newId}
                     onChange={(e) => setNewId(e.target.value)}
                     required
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono font-bold text-slate-800"
-                    placeholder="e.g. TBL-CUT-01"
+                    className="w-full px-3 py-2 text-xs font-mono font-bold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Manufacturer / Brand *
-                  </label>
-                  <input
-                    type="text"
-                    value={newBrand}
-                    onChange={(e) => setNewBrand(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800"
-                    placeholder="e.g. Featherlite, Juki, Philips"
-                  />
-                </div>
-              </div>
-
-              {/* Asset Name / Model */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Model / Description *
-                </label>
-                <input
-                  type="text"
-                  value={newModel}
-                  onChange={(e) => setNewModel(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800"
-                  placeholder="e.g. StitchDesk-Pro or Optima-Sew360"
-                />
-              </div>
-
-              {/* Line & Station Assignment */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Floor Line Assignment *
-                  </label>
-                  <select
-                    value={newLine}
-                    onChange={(e) => setNewLine(e.target.value as FloorLine)}
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800"
-                  >
-                    <option value="Line 01">Line 01 (Knit / Polo)</option>
-                    <option value="Line 02">Line 02 (T-Shirt Assembly)</option>
-                    <option value="Line 03">Line 03 (Woven Shirts)</option>
-                    <option value="Line 04">Line 04 (Denim Heavy)</option>
-                    <option value="Buffer Workshop">Buffer Workshop</option>
-                    <option value="Scrap Bay">Scrap Bay</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Station Number / Location *
+                    Department Station / Bay *
                   </label>
                   <input
                     type="text"
                     value={newStation}
                     onChange={(e) => setNewStation(e.target.value)}
                     required
+                    placeholder="e.g. Cutting Bay 01, Deck 04"
                     className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800"
-                    placeholder="e.g. Station 04, Cutting Bay"
                   />
                 </div>
               </div>
 
-              {/* Valuation & Technical Specs */}
+              {/* Brand & Model */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Capital Cost ($ USD)
+                    Brand / Manufacturer
+                  </label>
+                  <input
+                    type="text"
+                    value={newBrand}
+                    onChange={(e) => setNewBrand(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Model / Descriptor
+                  </label>
+                  <input
+                    type="text"
+                    value={newModel}
+                    onChange={(e) => setNewModel(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                  />
+                </div>
+              </div>
+
+              {/* Valuation & Initial Status */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Cost / Capital ($ USD)
                   </label>
                   <input
                     type="number"
                     value={newCost}
                     onChange={(e) => setNewCost(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-slate-800"
+                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800 font-mono"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Initial Staging Status
+                    Operational Status
                   </label>
                   <select
                     value={newStatus}
@@ -1473,8 +1738,8 @@ export default function FloorTrackerPage() {
                     className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800"
                   >
                     <option value="ACTIVE">ACTIVE (Operational)</option>
-                    <option value="BUFFER">BUFFER (Ready Standby)</option>
-                    <option value="BREAKDOWN">BREAKDOWN (Needs Repair)</option>
+                    <option value="BUFFER">BUFFER (Standby)</option>
+                    <option value="BREAKDOWN">BREAKDOWN (Defective)</option>
                   </select>
                 </div>
               </div>
@@ -1496,13 +1761,13 @@ export default function FloorTrackerPage() {
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-600/20 transition flex items-center gap-1.5"
+                  className="px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-600/20 transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Register Asset</span>

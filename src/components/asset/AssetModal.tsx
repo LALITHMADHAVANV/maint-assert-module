@@ -692,12 +692,14 @@ export function AssetModal({
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                     <MapPin className="w-3 h-3 text-indigo-600" />
-                    <span>Location</span>
+                    <span>Factory Dept & Zone</span>
                   </div>
                   <div className="font-bold text-xs text-slate-900 mt-1 truncate">
-                    {currentAsset.currentLine}
+                    {currentAsset.department || currentAsset.currentLine}
                   </div>
-                  <div className="text-[11px] text-indigo-600 font-semibold">{currentAsset.stationNo}</div>
+                  <div className="text-[10px] text-indigo-600 font-semibold truncate">
+                    {currentAsset.stationNo} • {currentAsset.currentLine}
+                  </div>
                 </div>
 
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
@@ -962,12 +964,22 @@ export function AssetModal({
                     onChange={(e) => setTargetLine(e.target.value as FloorLine)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="Line 01">Line 01 (Polo Shirt & Knit)</option>
-                    <option value="Line 02">Line 02 (Basic T-Shirt)</option>
-                    <option value="Line 03">Line 03 (Woven Shirts)</option>
-                    <option value="Line 04">Line 04 (Denim Heavy)</option>
-                    <option value="Buffer Workshop">Buffer Workshop (Standby)</option>
-                    <option value="Scrap Bay">Scrap Bay (Salvage)</option>
+                    <optgroup label="🧵 Sewing & Assembly Floor">
+                      <option value="Line 01">Sewing Floor - Line 01 (Polos & Knits)</option>
+                      <option value="Line 02">Sewing Floor - Line 02 (Tees & Tops)</option>
+                      <option value="Line 03">Sewing Floor - Line 03 (Wovens & Shirts)</option>
+                      <option value="Line 04">Sewing Floor - Line 04 (Heavy Denim)</option>
+                    </optgroup>
+                    <optgroup label="🏢 Factory Plant Departments">
+                      <option value="Cutting Department">Fabric Cutting Department</option>
+                      <option value="Finishing & Pressing">Finishing & Steam Pressing</option>
+                      <option value="Embroidery & Printing">Embroidery & Printing Unit</option>
+                      <option value="Quality & Packing">Quality Assurance & Packing</option>
+                      <option value="Warehouse & Storage">Warehouse & Raw Materials</option>
+                      <option value="Central Utilities & Plant">Central Utilities & Power Plant</option>
+                      <option value="Maintenance Workshop">Maintenance Workshop & Tool Bay</option>
+                      <option value="Scrap Bay">Scrap & Salvage Bay</option>
+                    </optgroup>
                   </select>
                 </div>
 
