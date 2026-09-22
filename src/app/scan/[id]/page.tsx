@@ -215,6 +215,21 @@ export default function MobileScanPage() {
               </span>
             </div>
           </div>
+
+          {machine.previousLine && (
+            <div className="mt-2.5 p-2 rounded-xl bg-indigo-950/40 border border-indigo-800/60 text-[11px] flex items-center justify-between text-indigo-300">
+              <div className="flex items-center gap-1.5 truncate">
+                <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                <span className="text-slate-400">Held before:</span>
+                <span className="font-semibold text-white truncate">{machine.previousLine} ({machine.previousStation || 'Station'})</span>
+              </div>
+              {machine.lastMovedAt && (
+                <span className="text-[10px] text-slate-400 shrink-0 ml-2 font-mono">
+                  {new Date(machine.lastMovedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Action Tabs: Report vs Relocate */}

@@ -1249,6 +1249,15 @@ export default function FloorTrackerPage() {
                                   <span className="font-semibold text-slate-600 truncate">{m.stationNo}</span>
                                   <span>•</span>
                                   <span className="font-mono font-medium text-slate-500">₹{(m.cost || 0).toLocaleString('en-IN')}</span>
+                                  {m.previousLine && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded-md shrink-0" title={`Previously installed at ${m.previousLine} (${m.previousStation || 'Station'})`}>
+                                        <ArrowRightLeft className="w-2.5 h-2.5 text-amber-600" />
+                                        <span>Held before: {m.previousLine}</span>
+                                      </span>
+                                    </>
+                                  )}
                                 </div>
 
                                 <div className="flex items-center gap-1 shrink-0">
@@ -1361,6 +1370,12 @@ export default function FloorTrackerPage() {
                       <span className="text-[10px] text-slate-500 font-medium block truncate mt-0.5">
                         {dept} • <span className="font-bold text-slate-700">{m.stationNo}</span>
                       </span>
+                      {m.previousLine && (
+                        <div className="mt-1 flex items-center gap-1 text-[10px] font-semibold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/80 truncate">
+                          <ArrowRightLeft className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                          <span className="truncate">Held before: {m.previousLine} ({m.previousStation || 'St.'})</span>
+                        </div>
+                      )}
                     </div>
 
                     {m.specs && (

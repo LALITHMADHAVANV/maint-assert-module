@@ -113,6 +113,20 @@ export interface Machine {
   totalDowntimeMinutes: number;
   ageYears?: number;
   specs?: string; // e.g. "12ft x 6ft Laminated Surface", "360° Swivel with Lumbar Support", "120W 6500K Day White"
+  previousLine?: FloorLine; // Location where asset was held before
+  previousStation?: string; // Station where asset was held before
+  lastMovedAt?: string; // ISO date of last relocation
+  lastMovedReason?: string;
+  lastMovedBy?: string;
+  relocationHistory?: {
+    fromLine: FloorLine;
+    fromStation: string;
+    toLine: FloorLine;
+    toStation: string;
+    movedAt: string;
+    movedBy?: string;
+    reason?: string;
+  }[];
 }
 
 export type PartCategory =

@@ -186,6 +186,12 @@ export function ScanModal({
                   Location: <span className="font-semibold">{currentMachine.currentLine}</span> •{' '}
                   {currentMachine.stationNo}
                 </div>
+                {currentMachine.previousLine && (
+                  <div className="text-amber-800 text-[10px] mt-1 flex items-center gap-1 font-medium bg-amber-50/90 px-2 py-0.5 rounded border border-amber-200">
+                    <ArrowRightLeft className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                    <span>Held before: <strong className="text-amber-950">{currentMachine.previousLine}</strong> ({currentMachine.previousStation || 'Station'})</span>
+                  </div>
+                )}
               </div>
               <span
                 className={`px-2 py-0.5 rounded text-[10px] font-bold ${

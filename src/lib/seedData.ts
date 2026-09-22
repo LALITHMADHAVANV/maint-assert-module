@@ -99,6 +99,22 @@ export const SEED_MACHINES: Machine[] = [
     totalDowntimeMinutes: 40,
     ageYears: 2.6,
     specs: 'High-speed 3,200 SPM electronic bartacker, direct-drive servo, 89 programmed patterns',
+    previousLine: 'Line 03',
+    previousStation: 'Station 04',
+    lastMovedAt: '2026-09-19T11:00:00Z',
+    lastMovedReason: 'Moved from Line 03 for pocket reinforcing on Line 01',
+    lastMovedBy: 'Ramesh Kumar',
+    relocationHistory: [
+      {
+        fromLine: 'Line 03',
+        fromStation: 'Station 04',
+        toLine: 'Line 01',
+        toStation: 'Station 07',
+        movedAt: '2026-09-19T11:00:00Z',
+        movedBy: 'Ramesh Kumar',
+        reason: 'Moved from Line 03 for pocket reinforcing on Line 01',
+      },
+    ],
   },
   {
     id: 'MC-FLK-CYL-301',
@@ -259,6 +275,22 @@ export const SEED_MACHINES: Machine[] = [
     totalDowntimeMinutes: 30,
     ageYears: 2.5,
     specs: 'Light/Fine cloth edge overlock, micro-sensor needle positioning, 6,800 RPM',
+    previousLine: 'Line 01',
+    previousStation: 'Station 05',
+    lastMovedAt: '2026-09-18T14:20:00Z',
+    lastMovedReason: 'Rebalanced to Line 02 for light-fabric polo production order',
+    lastMovedBy: 'Ramesh Kumar',
+    relocationHistory: [
+      {
+        fromLine: 'Line 01',
+        fromStation: 'Station 05',
+        toLine: 'Line 02',
+        toStation: 'Station 06',
+        movedAt: '2026-09-18T14:20:00Z',
+        movedBy: 'Ramesh Kumar',
+        reason: 'Rebalanced to Line 02 for light-fabric polo production order',
+      },
+    ],
   },
   {
     id: 'MC-SCRAP-99',
@@ -279,6 +311,22 @@ export const SEED_MACHINES: Machine[] = [
     totalDowntimeMinutes: 480,
     ageYears: 8.6,
     specs: 'Decommissioned frame salvaged for looper mechanisms, needle clamp blocks, and flatbed covers',
+    previousLine: 'Line 02',
+    previousStation: 'Station 08',
+    lastMovedAt: '2026-09-12T10:15:00Z',
+    lastMovedReason: 'Casting housing fractured; decommissioned and moved to scrap salvage bay',
+    lastMovedBy: 'Suresh Babu',
+    relocationHistory: [
+      {
+        fromLine: 'Line 02',
+        fromStation: 'Station 08',
+        toLine: 'Scrap Bay',
+        toStation: 'Salvage Rack 01',
+        movedAt: '2026-09-12T10:15:00Z',
+        movedBy: 'Suresh Babu',
+        reason: 'Casting housing fractured; decommissioned and moved to scrap salvage bay',
+      },
+    ],
   },
 
   // ==================== 2. WORK, CUTTING & INSPECTION TABLES ====================

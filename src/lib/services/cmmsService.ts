@@ -207,11 +207,35 @@ export async function relocateMachine(
   if (!machine) return;
 
   const oldLine = machine.currentLine;
+  const oldStation = machine.stationNo || 'Station 01';
+  const newStation = stationNo || 'Station 01';
   const newStatus = targetLine === 'Buffer Workshop' ? 'BUFFER' : targetLine === 'Scrap Bay' ? 'SCRAP' : 'ACTIVE';
+  const movedAt = new Date().toISOString();
+
+  const moveRecord = {
+    fromLine: oldLine,
+    fromStation: oldStation,
+    toLine: targetLine,
+    toStation: newStation,
+    movedAt,
+    movedBy: mechanicName,
+    reason,
+  };
 
   const updatedMachines = currentMachines.map((m) =>
     m.id === machineId
-      ? { ...m, currentLine: targetLine, stationNo: stationNo || 'Station 01', status: newStatus }
+      ? {
+          ...m,
+          currentLine: targetLine,
+          stationNo: newStation,
+          status: newStatus,
+          previousLine: oldLine,
+          previousStation: oldStation,
+          lastMovedAt: movedAt,
+          lastMovedReason: reason,
+          lastMovedBy: mechanicName,
+          relocationHistory: [moveRecord, ...(m.relocationHistory || [])],
+        }
       : m
   );
   setLocal(STORAGE_KEYS.MACHINES, updatedMachines);
@@ -223,16 +247,16 @@ export async function relocateMachine(
     machineId,
     machineType: machine.typeName || machine.type,
     line: targetLine,
-    reportedAt: new Date().toISOString(),
+    reportedAt: movedAt,
     reportedBy: mechanicName,
     faultCategory: 'Line Rebalancing',
-    faultDetails: `Relocation from ${oldLine} to ${targetLine} (${stationNo}). Reason: ${reason}`,
+    faultDetails: `Relocated from ${oldLine} (${oldStation}) to ${targetLine} (${newStation}). Reason: ${reason}`,
     urgency: 'WARNING',
     status: 'COMPLETED',
     attendedBy: mechanicName,
-    resolvedAt: new Date().toISOString(),
+    resolvedAt: movedAt,
     downtimeMinutes: 15,
-    actionTaken: `Transferred machine to ${targetLine} ${stationNo}. Checked level and air supply.`,
+    actionTaken: `Transferred machine from ${oldLine} (${oldStation}) to ${targetLine} (${newStation}). Re-leveled on floor, connected pneumatics, and tested sewing tension.`,
     partsUsed: [],
   };
 
@@ -245,8 +269,14 @@ export async function relocateMachine(
     try {
       await updateDoc(doc(db, 'machines', machineId), {
         currentLine: targetLine,
-        stationNo: stationNo || 'Station 01',
+        stationNo: newStation,
         status: newStatus,
+        previousLine: oldLine,
+        previousStation: oldStation,
+        lastMovedAt: movedAt,
+        lastMovedReason: reason,
+        lastMovedBy: mechanicName,
+        relocationHistory: [moveRecord, ...(machine.relocationHistory || [])],
       });
       await setDoc(doc(db, 'repairs', relocationRecord.id), relocationRecord);
     } catch (e) {
