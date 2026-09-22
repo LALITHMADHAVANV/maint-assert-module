@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Boxes,
   PackageOpen,
@@ -21,6 +22,7 @@ import {
   AlertOctagon,
   Clock,
   User,
+  Users,
   ArrowRight,
   Send,
   Building,
@@ -431,6 +433,42 @@ export default function InventoryPage() {
       console.error(err);
     }
   };
+
+  if (role === 'ADMIN' || role === 'ASSET_MANAGER') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[65vh] text-center p-8 bg-white rounded-3xl border border-slate-200 shadow-sm max-w-2xl mx-auto space-y-5 my-8">
+        <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shadow-xs">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+            Role Restriction: Administrator
+          </span>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+            Spare Parts Management Restricted
+          </h2>
+          <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+            The Tool Crib &amp; Spare Parts inventory module is strictly maintained by <strong>M. Arumugam (Stores In-Charge)</strong> and factory mechanics. Plant Administrators focus on machine fleet registry, maintenance operations, and factory staff access.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
+          <Link
+            href="/dashboard/users"
+            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm"
+          >
+            <Users className="w-4 h-4" />
+            <span>Go to User Management</span>
+          </Link>
+          <Link
+            href="/dashboard/machines"
+            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition border border-slate-200"
+          >
+            <span>View Machine Fleet</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

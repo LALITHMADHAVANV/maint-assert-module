@@ -23,6 +23,7 @@ import {
   MessageSquare,
   ChevronDown,
   Users,
+  UserPlus,
   SlidersHorizontal,
 } from 'lucide-react';
 import { LiveClock } from './LiveClock';
@@ -266,11 +267,10 @@ export function Navbar() {
         icon: QrCode,
       },
       {
-        label: 'Spare Parts Crib',
-        href: '/dashboard/inventory',
-        icon: Boxes,
-        badge: lowStockCount > 0 ? lowStockCount : null,
-        badgeColor: 'bg-rose-500 text-white',
+        label: '👥 User Management',
+        href: '/dashboard/users',
+        icon: UserPlus,
+        highlight: true,
       },
       {
         label: 'Maintenance History',
@@ -366,6 +366,18 @@ export function Navbar() {
 
               {/* Live Floor Clock */}
               <LiveClock />
+
+              {/* Admin Quick Action: Add User */}
+              {(role === 'ADMIN' || role === 'ASSET_MANAGER') && (
+                <Link
+                  href="/dashboard/users"
+                  className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition active:scale-95 cursor-pointer"
+                  title="Add New Factory User"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Add User</span>
+                </Link>
+              )}
 
               {/* Floor QR Scanning Actions (Only visible for Mechanics and Plant Admin) */}
               {isMechanicOrAdmin && (

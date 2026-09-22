@@ -206,6 +206,13 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   title: string;
+  phone?: string;
+  department?: string;
+  employeeId?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+  defaultPassword?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type RequisitionType = 'MONTHLY_INDENT' | 'URGENT_NEED' | 'CRITICAL_CEO';
