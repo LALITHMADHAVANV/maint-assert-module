@@ -123,6 +123,13 @@ export async function POST(req: Request) {
       );
     }
 
+    if (role === 'CEO') {
+      return NextResponse.json(
+        { error: 'Cannot create CEO accounts. Executive board role cannot be provisioned by admin.' },
+        { status: 403 }
+      );
+    }
+
     const { auth, db } = getFirebase();
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass = password.trim();

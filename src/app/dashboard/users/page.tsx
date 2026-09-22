@@ -104,17 +104,16 @@ export default function UserManagementPage() {
         setNewDepartment('Tool Crib Stores');
         setNewPassword('stores123');
         break;
-      case 'CEO':
-        setNewTitle('Chief Executive Officer (Managing Director)');
-        setNewDepartment('Executive Board');
-        setNewPassword('ceo123');
-        break;
     }
   };
 
   // Submit Add User
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (newRole === 'CEO') {
+      showToast('Cannot create CEO accounts via admin user provisioning', 'error');
+      return;
+    }
     if (!newName.trim() || !newEmail.trim() || !newPassword.trim()) {
       showToast('Please fill in all mandatory fields', 'error');
       return;
@@ -559,8 +558,8 @@ export default function UserManagementPage() {
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                   Select Role &amp; Access Level *
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {(['MECHANIC', 'SENIOR_MECHANIC', 'STORE_PERSON', 'ADMIN', 'CEO'] as UserRole[]).map(
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {(['MECHANIC', 'SENIOR_MECHANIC', 'STORE_PERSON', 'ADMIN'] as UserRole[]).map(
                     (r) => {
                       const isSelected = newRole === r;
                       const badge = getRoleBadge(r);
