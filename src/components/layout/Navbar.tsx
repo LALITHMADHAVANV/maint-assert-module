@@ -251,14 +251,9 @@ export function Navbar() {
         href: '/dashboard/floor-tracker',
         icon: Layers,
       },
-      {
-        label: 'Asset Types & Specs',
-        href: '/dashboard/asset-types',
-        icon: SlidersHorizontal,
-      },
     ];
   } else {
-    // 🛡️ PLANT ADMIN / ASSET MANAGER: Master oversight across all 8 operational modules
+    // 🛡️ PLANT ADMIN / ASSET MANAGER: Master oversight across operational modules
     navTabs = [
       {
         label: '1. Machine Entry & QR',
@@ -288,11 +283,6 @@ export function Navbar() {
         label: '5. Asset Floor Grid',
         href: '/dashboard/floor-tracker',
         icon: Layers,
-      },
-      {
-        label: '6. Asset Types Catalog',
-        href: '/dashboard/asset-types',
-        icon: SlidersHorizontal,
       },
       {
         label: '👑 CEO Approvals',
