@@ -160,10 +160,43 @@ export default function FloorTrackerPage() {
   const [newSpecs, setNewSpecs] = useState('');
   const [newStatus, setNewStatus] = useState<MachineStatus>('ACTIVE');
 
+  const [hasCheckedUrlParams, setHasCheckedUrlParams] = useState(false);
+
   useEffect(() => {
     const unsub = subscribeMachines((data) => setMachines(data));
     return () => unsub();
   }, []);
+
+  // Handle URL query parameters (e.g. ?category=CHAIR or ?openModal=true)
+  useEffect(() => {
+    if (!hasCheckedUrlParams && typeof window !== 'undefined' && machines.length > 0) {
+      setHasCheckedUrlParams(true);
+      const params = new URLSearchParams(window.location.search);
+      const catParam = params.get('category')?.toUpperCase() as AssetCategory | null;
+      const assetIdParam = params.get('assetId');
+      const openModalParam = params.get('openModal');
+
+      if (assetIdParam) {
+        const found = machines.find((m) => m.id === assetIdParam);
+        if (found) {
+          setSelectedAssetForModal(found);
+          setModalInitialCategory(found.category || 'MACHINE');
+          setIsAssetModalOpen(true);
+        }
+      } else if (catParam && ['MACHINE', 'TABLE', 'CHAIR', 'LIGHT', 'FAN', 'UTILITY'].includes(catParam)) {
+        const firstInCat = machines.find((m) => (m.category || 'MACHINE') === catParam);
+        setSelectedAssetForModal(firstInCat || null);
+        setModalInitialCategory(catParam);
+        if (openModalParam === 'true' || params.has('category')) {
+          setIsAssetModalOpen(true);
+        }
+      } else if (openModalParam === 'true') {
+        setSelectedAssetForModal(machines[0] || null);
+        setModalInitialCategory('MACHINE');
+        setIsAssetModalOpen(true);
+      }
+    }
+  }, [machines, hasCheckedUrlParams]);
 
   // Sync / Reset to full dataset
   const handleSyncAllAssets = async () => {
