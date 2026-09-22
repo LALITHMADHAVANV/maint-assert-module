@@ -10,9 +10,19 @@ import {
   signOut as fbSignOut,
   onAuthStateChanged,
   updateProfile,
+  updatePassword,
   User as FirebaseUser,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+
+export const ROLE_PASSWORDS: Record<UserRole, string> = {
+  CEO: 'ceo123',
+  ADMIN: 'admin123',
+  ASSET_MANAGER: 'admin123',
+  SENIOR_MECHANIC: 'senior123',
+  MECHANIC: 'mechanic123',
+  STORE_PERSON: 'stores123',
+};
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -22,6 +32,7 @@ interface AuthContextType {
   isLoading: boolean;
   loginAsRole: (role: UserRole) => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
+  updateUserPassword: (newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -139,22 +150,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      // 1. Attempt sign-in with Firebase Auth
+      // 1. Attempt direct sign-in with Firebase Auth
       const cred = await signInWithEmailAndPassword(auth, email, pass);
       await syncUserProfile(cred.user);
     } catch (err: unknown) {
       const fbError = err as { code?: string; message?: string };
 
-      // If user typed wrong password, or user doesn't exist
+      // If invalid password or user not found, try fallback passwords
       if (
-        fbError.code === 'auth/user-not-found' ||
         fbError.code === 'auth/invalid-credential' ||
-        fbError.code === 'auth/invalid-login-credentials'
+        fbError.code === 'auth/invalid-login-credentials' ||
+        fbError.code === 'auth/wrong-password' ||
+        fbError.code === 'auth/user-not-found'
       ) {
-        try {
-          // Attempt automatic account creation if truly a new user
-          const newCred = await createUserWithEmailAndPassword(auth, email, pass);
+        const determinedRole = resolveUserRole(email);
+        const rolePass = ROLE_PASSWORDS[determinedRole] || 'sewing123';
+        const tryPasses = [rolePass, 'sewing123'].filter((p) => p && p !== pass);
 
+        // Try candidate passwords
+        for (const candidate of tryPasses) {
+          try {
+            const altCred = await signInWithEmailAndPassword(auth, email, candidate);
+            // Optionally sync Firebase password to what user typed
+            try {
+              await updatePassword(altCred.user, pass);
+            } catch (pErr) {
+              console.warn('Could not auto-sync password:', pErr);
+            }
+            await syncUserProfile(altCred.user);
+            return;
+          } catch {
+            // continue checking
+          }
+        }
+
+        // If user does not exist in Firebase, auto-register them
+        try {
+          const newCred = await createUserWithEmailAndPassword(auth, email, pass);
           const matched = SEED_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
           const role = matched ? matched.role : resolveUserRole(email);
           const name = matched ? matched.name : email.split('@')[0];
@@ -163,18 +195,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await syncUserProfile(newCred.user);
           return;
         } catch (createErr: unknown) {
-          const createFbErr = createErr as { code?: string; message?: string };
-          // If email is already in use, the account DOES exist, but the password provided was wrong!
+          const createFbErr = createErr as { code?: string };
           if (createFbErr.code === 'auth/email-already-in-use') {
-            throw new Error(`Incorrect password for ${email}. Note: Default password is: sewing123 (all lowercase, no spaces)`);
+            throw new Error(`Incorrect password for ${email}. Default password for this role is: ${rolePass} (or sewing123)`);
           }
-          console.error('Firebase user registration failed:', createErr);
           throw createErr;
         }
-      }
-
-      if (fbError.code === 'auth/wrong-password') {
-        throw new Error(`Incorrect password for ${email}. Note: Default password is: sewing123 (all lowercase, no spaces)`);
       }
 
       throw err;
@@ -196,7 +222,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ? SEED_USERS[4]
         : SEED_USERS[3]);
 
-    await loginWithEmail(target.email, 'sewing123');
+    const targetPass = ROLE_PASSWORDS[targetRole] || 'sewing123';
+    await loginWithEmail(target.email, targetPass);
+  };
+
+  const updateUserPassword = async (newPassword: string): Promise<void> => {
+    if (!firebaseUser) {
+      throw new Error('No user is currently authenticated.');
+    }
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('Password must be at least 6 characters long.');
+    }
+    await updatePassword(firebaseUser, newPassword);
   };
 
   const logout = async (): Promise<void> => {
@@ -215,6 +252,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         loginAsRole,
         loginWithEmail,
+        updateUserPassword,
         logout,
       }}
     >

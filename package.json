@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:firebase": "node scripts/seed-firestore.mjs"
+    "seed:firebase": "node scripts/seed-firestore.mjs",
+    "set-passwords": "node scripts/set-all-user-passwords.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
