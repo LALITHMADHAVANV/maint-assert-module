@@ -10,6 +10,7 @@ import {
 import { db, isFirebaseConfigured } from '@/lib/firebase';
 import {
   Machine,
+  MachineStatus,
   SparePart,
   RepairTicket,
   PPMSchedule,
@@ -250,6 +251,26 @@ export async function relocateMachine(
       await setDoc(doc(db, 'repairs', relocationRecord.id), relocationRecord);
     } catch (e) {
       console.error('Firestore relocateMachine error:', e);
+    }
+  }
+}
+
+export async function updateMachineStatus(
+  machineId: string,
+  status: MachineStatus
+): Promise<void> {
+  const currentMachines = getLocal<Machine[]>(STORAGE_KEYS.MACHINES, SEED_MACHINES);
+  const updatedMachines = currentMachines.map((m) =>
+    m.id === machineId ? { ...m, status } : m
+  );
+  setLocal(STORAGE_KEYS.MACHINES, updatedMachines);
+  notifyLocal('machines', updatedMachines);
+
+  if (isFirebaseConfigured) {
+    try {
+      await updateDoc(doc(db, 'machines', machineId), { status });
+    } catch (e) {
+      console.error('Firestore updateMachineStatus error:', e);
     }
   }
 }
