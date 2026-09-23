@@ -57,23 +57,24 @@ export default function MobileScanPage() {
         setTargetLine(found.currentLine);
         setTargetStation(found.stationNo);
       } else if (searchParams && searchParams.get('brand')) {
-        // Fallback initialized directly from the machine data fed into QR payload
+        // Fallback initialized directly from the machine/asset data fed into QR payload
+        const qCategory = (searchParams.get('category') as any) || 'MACHINE';
         const fallbackMachine: Machine = {
           id: machineId,
           name: `${searchParams.get('brand') || ''} ${searchParams.get('model') || ''}`.trim() || machineId,
           brand: searchParams.get('brand') || 'OEM',
           model: searchParams.get('model') || 'Standard',
           type: (searchParams.get('type') as any) || 'SNLS',
-          typeName: searchParams.get('typeName') || searchParams.get('type') || 'Sewing Machine',
+          typeName: searchParams.get('typeName') || searchParams.get('type') || 'Plant Asset',
           currentLine: (searchParams.get('line') as FloorLine) || 'Line 01',
           stationNo: searchParams.get('station') || 'Station 01',
           motorType: (searchParams.get('motor') as any) || 'SERVO',
           purchaseDate: searchParams.get('date') || new Date().toISOString().slice(0, 10),
           cost: searchParams.get('cost') ? parseFloat(searchParams.get('cost')!) : 75000,
           status: 'ACTIVE',
-          category: 'MACHINE',
-          department: 'Sewing Floor',
-          operator: 'Line Operator',
+          category: qCategory,
+          department: (searchParams.get('line')?.includes('Line') ? 'Sewing Floor' : searchParams.get('line') || 'Sewing Floor') as any,
+          operator: 'Floor Operator',
           totalDowntimeMinutes: 0,
         };
         setMachine(fallbackMachine);
@@ -280,7 +281,7 @@ export default function MobileScanPage() {
             }`}
           >
             <ArrowRightLeft className="w-4 h-4 text-indigo-400" />
-            <span>2. Relocate Machine</span>
+            <span>2. Relocate Asset</span>
           </button>
         </div>
 
@@ -290,35 +291,93 @@ export default function MobileScanPage() {
             <form onSubmit={handleBreakdownSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Specific Sewing Fault *
+                  Specific Asset Defect / Breakdown *
                 </label>
                 <select
                   value={faultType}
                   onChange={(e) => setFaultType(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2.5 text-xs bg-slate-800 border border-slate-700 rounded-xl focus:ring-2 focus:ring-rose-500 text-slate-100 outline-none"
+                  className="w-full px-3.5 py-2.5 text-xs bg-slate-800 border border-slate-700 rounded-xl focus:ring-2 focus:ring-rose-500 text-slate-100 outline-none font-medium"
                 >
-                  <option value="Skipping Stitches / Looper Timing Misalignment">
-                    Skipping Stitches / Looper Timing Misalignment
-                  </option>
-                  <option value="Frequent Needle Breakage">
-                    Frequent Needle Breakage (Deflection / Feed clash)
-                  </option>
-                  <option value="Thread Tension / Puckering">
-                    Thread Tension / Seam Puckering (Birdnesting)
-                  </option>
-                  <option value="Motor Error / E-07 Controller">
-                    Motor Error / Direct-Drive Controller E-07
-                  </option>
-                  <option value="Oil Reservoir Leakage">
-                    Oil Reservoir Leakage / Siphon Failure
-                  </option>
-                  <option value="Bobbin Winder / Cutter Jam">
-                    Under-bed Thread Trimmer (UTT) / Cutter Jam
-                  </option>
-                  <option value="Severe Noise & Vibration">
-                    Severe Noise & Bearing Vibration
-                  </option>
+                  {machine.category === 'TABLE' ? (
+                    <>
+                      <option value="Table Surface Damaged / Laminate Chipped">
+                        Table Surface Damaged / Laminate Chipped
+                      </option>
+                      <option value="Levelling Bolt Loose / Table Wobble">
+                        Levelling Bolt Loose / Table Wobble
+                      </option>
+                      <option value="Ruler / Measurement Tape Decal Peeling">
+                        Ruler / Measurement Tape Decal Peeling
+                      </option>
+                      <option value="Air-Flotation Blower Inoperative / Duct Clogged">
+                        Air-Flotation Blower Inoperative / Duct Clogged
+                      </option>
+                      <option value="Table Leg Structural Weld / Bolt Cracked">
+                        Table Leg Structural Weld / Bolt Cracked
+                      </option>
+                    </>
+                  ) : machine.category === 'CHAIR' ? (
+                    <>
+                      <option value="Pneumatic Gas Cylinder Sinking / Pressure Loss">
+                        Pneumatic Gas Cylinder Sinking / Pressure Loss
+                      </option>
+                      <option value="Castor Wheel Broken / Thread Jammed">
+                        Castor Wheel Broken / Thread Jammed
+                      </option>
+                      <option value="Lumbar Support / Backrest Tilt Broken">
+                        Lumbar Support / Backrest Tilt Broken
+                      </option>
+                      <option value="Seat Base Foam Cracked / Loose Mounting">
+                        Seat Base Foam Cracked / Loose Mounting
+                      </option>
+                    </>
+                  ) : machine.category === 'UTILITY' || machine.category === 'LIGHT' || machine.category === 'FAN' ? (
+                    <>
+                      <option value="High-Bay / Task Light Flickering or Dead Ballast">
+                        High-Bay / Task Light Flickering or Dead Ballast
+                      </option>
+                      <option value="Light Tube Broken / Low Lumens">
+                        Light Tube Broken / Low Lumens
+                      </option>
+                      <option value="Industrial Fan Motor Bearing Noise / Blade Vibration">
+                        Industrial Fan Motor Bearing Noise / Blade Vibration
+                      </option>
+                      <option value="Steam Boiler Heating Element / Pressure Valve Drop">
+                        Steam Boiler Heating Element / Pressure Valve Drop
+                      </option>
+                      <option value="Compressor Pneumatic Pressure Drop / Air Hose Leak">
+                        Compressor Pneumatic Pressure Drop / Air Hose Leak
+                      </option>
+                      <option value="Fire Station Inspection Overdue / Gauge Low">
+                        Fire Station Inspection Overdue / Gauge Low
+                      </option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="Skipping Stitches / Looper Timing Misalignment">
+                        Skipping Stitches / Looper Timing Misalignment
+                      </option>
+                      <option value="Frequent Needle Breakage">
+                        Frequent Needle Breakage (Deflection / Feed clash)
+                      </option>
+                      <option value="Thread Tension / Puckering">
+                        Thread Tension / Seam Puckering (Birdnesting)
+                      </option>
+                      <option value="Motor Error / E-07 Controller">
+                        Motor Error / Direct-Drive Controller E-07
+                      </option>
+                      <option value="Oil Reservoir Leakage">
+                        Oil Reservoir Leakage / Siphon Failure
+                      </option>
+                      <option value="Bobbin Winder / Cutter Jam">
+                        Under-bed Thread Trimmer (UTT) / Cutter Jam
+                      </option>
+                      <option value="Severe Noise & Vibration">
+                        Severe Noise &amp; Bearing Vibration
+                      </option>
+                    </>
+                  )}
                 </select>
               </div>
 

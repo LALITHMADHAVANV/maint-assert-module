@@ -15,39 +15,103 @@ import {
   AlertOctagon,
   ArrowRight,
   Filter,
+  LayoutGrid,
+  Armchair,
+  Zap,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Machine, MachineType, MotorType, FloorLine, MachineStatus } from '@/types/cmms';
+import { Machine, MachineType, MotorType, FloorLine, MachineStatus, AssetCategory } from '@/types/cmms';
 import { subscribeMachines, createMachine } from '@/lib/services/cmmsService';
 import { useToast } from '@/context/ToastContext';
 import { ScanModal } from '@/components/scan/ScanModal';
 import { PrintableAssetDocumentModal } from '@/components/print/PrintableAssetDocumentModal';
 import {
-  MACHINE_CATALOG,
-  MachineCategoryGroup,
-  SUBTYPE_LOOKUP,
-  getCategoryForType,
+  ASSET_CATEGORIES,
+  ALL_ASSET_SUBTYPES,
+  ASSET_SUBTYPE_LOOKUP,
+  getAssetCategoryForType,
+  AssetSubtypeDef,
 } from '@/lib/machineCatalog';
+
+const SAMPLE_ASSETS = [
+  {
+    category: 'MACHINE' as AssetCategory,
+    idPrefix: 'MC-OVK-4TH-',
+    brand: 'Yamato',
+    type: 'OVERLOCK_4_THREAD' as MachineType,
+    model: 'AZ-8000G / 4-Thread High-Speed',
+    date: '2023-04-12',
+    cost: 98000,
+    motor: 'SERVO' as MotorType,
+    line: 'Line 01' as FloorLine,
+    station: 'Station 04',
+    specs: '4-thread safety stitch, differential feed ratio 1:0.7–1:2, max 7,500 RPM, auto-lubrication',
+    label: 'Yamato 4-Thread Overlock Machine',
+  },
+  {
+    category: 'TABLE' as AssetCategory,
+    idPrefix: 'TBL-CUT-',
+    brand: 'Eastman',
+    type: 'TABLE_CUTTING' as MachineType,
+    model: 'MasterSpread Air-Float 12ft x 6ft',
+    date: '2023-02-18',
+    cost: 65000,
+    motor: 'SERVO' as MotorType,
+    line: 'Cutting Department' as FloorLine,
+    station: 'Spreading Table Bay 01',
+    specs: '12ft x 6ft laminated micro-perforated table with air-cushion blower and steel side guide rails',
+    label: 'Eastman Air-Float Fabric Spreading Table',
+  },
+  {
+    category: 'CHAIR' as AssetCategory,
+    idPrefix: 'CHR-OPR-',
+    brand: 'Featherlite',
+    type: 'CHAIR_OPERATOR' as MachineType,
+    model: 'Optima-Sewing Swivel 360',
+    date: '2023-08-10',
+    cost: 4500,
+    motor: 'SERVO' as MotorType,
+    line: 'Line 02' as FloorLine,
+    station: 'Station 07',
+    specs: 'Pneumatic height adjustment, heavy-duty polyurethane seat, 360° swivel with lumbar support',
+    label: 'Featherlite Ergonomic Operator Swivel Chair',
+  },
+  {
+    category: 'UTILITY' as AssetCategory,
+    idPrefix: 'UTL-HBY-',
+    brand: 'Philips',
+    type: 'LIGHT_HIGHBAY' as MachineType,
+    model: 'CoreLine HighBay 120W',
+    date: '2023-05-22',
+    cost: 7500,
+    motor: 'SERVO' as MotorType,
+    line: 'Central Utilities & Plant' as FloorLine,
+    station: 'Ceiling Grid Bay C',
+    specs: '120W, 16,000 Lumen, 6500K Day White, IP65 dust and textile fiber resistant',
+    label: 'Philips 120W High-Bay Overhead LED Fixture',
+  },
+];
 
 export default function MachinesPage() {
   const { showToast } = useToast();
   const [machines, setMachines] = useState<Machine[]>([]);
 
-  // Machine form state
-  const [mCategoryGroup, setMCategoryGroup] = useState<MachineCategoryGroup>('OVERLOCK');
+  // Asset Form State
+  const [selectedCategory, setSelectedCategory] = useState<AssetCategory>('MACHINE');
   const [mId, setMId] = useState('MC-OVK-4TH-101');
   const [mBrand, setMBrand] = useState('Yamato');
   const [mType, setMType] = useState<MachineType>('OVERLOCK_4_THREAD');
   const [mModel, setMModel] = useState('AZ-8000G / 4-Thread High-Speed');
   const [mDate, setMDate] = useState('2023-04-12');
-  const [mCost, setMCost] = useState<number>(980);
+  const [mCost, setMCost] = useState<number>(98000);
   const [mMotor, setMMotor] = useState<MotorType>('SERVO');
   const [mLine, setMLine] = useState<FloorLine>('Line 01');
   const [mStation, setMStation] = useState('Station 04');
 
-  // Search & filter
+  // Search & Filters for Assets Table
   const [searchQuery, setSearchQuery] = useState('');
   const [filterLine, setFilterLine] = useState<string>('ALL');
+  const [filterCategory, setFilterCategory] = useState<string>('ALL');
 
   // Scanner modal state
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
@@ -57,6 +121,9 @@ export default function MachinesPage() {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printModalMachine, setPrintModalMachine] = useState<Machine | null>(null);
   const [printModalMode, setPrintModalMode] = useState<'TAG' | 'DOCUMENT' | 'BATCH'>('TAG');
+
+  // Sample index for autofill cycling
+  const [sampleIdx, setSampleIdx] = useState(0);
 
   // Host origin for QR payload
   const [origin, setOrigin] = useState('https://textech.factory');
@@ -74,133 +141,101 @@ export default function MachinesPage() {
     return () => unsub();
   }, []);
 
-  // Compute machine age dynamically
+  // Compute machine/asset age dynamically
   const calculatedAge = useMemo(() => {
-    if (!mDate) return 'New Machine';
+    if (!mDate) return 'New Asset';
     const pDate = new Date(mDate);
     const now = new Date();
     const diff = (now.getTime() - pDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-    return diff > 0 ? `${diff.toFixed(1)} Years` : 'New Machine';
+    return diff > 0 ? `${diff.toFixed(1)} Years` : 'New Asset';
   }, [mDate]);
 
-  const typeNameMap: Record<MachineType, string> = {
-    // 1. Overlock (Yamato, Supreme)
-    OVERLOCK_4_THREAD: '4 Thread Overlock',
-    OVERLOCK_RIB_THREAD: 'Rib Thread Overlock',
-    OVERLOCK_LFC: 'LFC Overlock',
-    // 2. Flatlock (Yamato)
-    FLATLOCK_HEMMING: 'Hemming Flatlock',
-    FLATLOCK_SMALL_CYLINDER: 'Small Cylinder Bed Flatlock',
-    FLATLOCK_CYLINDER_BED: 'Cylinder Bed Flatlock',
-    FLATLOCK_FLAT_BED: 'Flat Bed Flatlock',
-    FLATLOCK_VT: 'VT Flatlock',
-    FLATLOCK_TOP_ELASTIC: 'Top Elastic Flatlock',
-    // 3. Single Needle Machine (Brother, Supreme)
-    SN_BROTHER_KAJA: 'Brother KAJA (Buttonhole)',
-    SN_BROTHER_BUTTON_STITCH: 'Brother Button Stitch',
-    SN_BROTHER_BARTACK: 'Brother Bartack',
-    // Legacy / Aliases
-    SNLS: 'Single Needle Lockstitch (SNLS)',
-    DNLS: 'Double Needle Lockstitch (DNLS)',
-    OVERLOCK: '4-Thread Overlock / Safety Stitch',
-    FLATLOCK: 'Flatlock / Interlock (Coverstitch)',
-    BUTTONHOLE: 'Buttonhole Indexer',
-    BARTACK: 'Electronic Bartack Machine',
-    FEED_OFF_ARM: 'Feed-off-the-arm (FOTA)',
-    CUTTING_MACHINE: 'Fabric End / Straight Knife Cutter',
-    FUSING_PRESS: 'Collar / Cuff Fusing Press',
-    MACHINE_CUSTOM: 'Custom Machinery',
-    TABLE_CUTTING: 'Fabric Spreading & Cutting Table',
-    TABLE_SEWING: 'Sewing Workstation Table',
-    TABLE_INSPECTION: 'QC Garment Checking Table',
-    TABLE_PACKING: 'Final Folding & Poly-Bagging Table',
-    TABLE_PATTERN: 'Pattern Drafting & Master Table',
-    CHAIR_OPERATOR: 'Ergonomic Sewing Swivel Chair',
-    CHAIR_SUPERVISOR: 'High-Back Supervisor Chair',
-    CHAIR_STOOL: 'Mechanic Workshop Stool',
-    LIGHT_HIGHBAY: 'Overhead Linear High-Bay LED',
-    LIGHT_TASK: 'Needle Station Gooseneck Lamp',
-    LIGHT_INSPECTION: 'Color-Checking Inspection Tube',
-    FAN_CEILING: 'Heavy Industrial Ceiling Fan',
-    FAN_EXHAUST: 'Wall Exhaust Blower',
-    FAN_PEDESTAL: 'High-Velocity Floor Pedestal Fan',
-    UTILITY_BOILER: 'Industrial Steam Generator',
-    UTILITY_COMPRESSOR: 'Screw Air Compressor',
-    UTILITY_SAFETY: 'Line Fire Safety Station',
-  };
+  // Current category definition
+  const currentCategoryDef = useMemo(() => {
+    return ASSET_CATEGORIES.find((c) => c.id === selectedCategory) || ASSET_CATEGORIES[0];
+  }, [selectedCategory]);
 
-  const handleCategoryChange = (cat: MachineCategoryGroup) => {
-    setMCategoryGroup(cat);
-    const rnd = Math.floor(100 + Math.random() * 900);
-    if (cat === 'OVERLOCK') {
-      setMType('OVERLOCK_4_THREAD');
-      setMBrand('Yamato');
-      setMModel('AZ-8000G / 4-Thread High-Speed');
-      setMCost(980);
-      setMId(`MC-OVK-4TH-${rnd}`);
-    } else if (cat === 'FLATLOCK') {
-      setMType('FLATLOCK_HEMMING');
-      setMBrand('Yamato');
-      setMModel('VG-2700-Hemming / UTT');
-      setMCost(1550);
-      setMId(`MC-FLK-HEM-${rnd}`);
-    } else {
-      setMType('SN_BROTHER_KAJA');
-      setMBrand('Brother');
-      setMModel('HE-800B KAJA Electronic');
-      setMCost(1850);
-      setMId(`MC-SN-KAJA-${rnd}`);
+  // Available brands for the current subtype or category
+  const availableBrands: string[] = useMemo(() => {
+    const subDef = ASSET_SUBTYPE_LOOKUP[mType];
+    if (subDef && subDef.brands && subDef.brands.length > 0) {
+      return subDef.brands;
+    }
+    const catBrands = Array.from(new Set(currentCategoryDef.subtypes.flatMap((s) => s.brands)));
+    return catBrands.length > 0 ? catBrands : ['Generic OEM'];
+  }, [mType, currentCategoryDef]);
+
+  // Handler for category switch
+  const handleCategorySelect = (cat: AssetCategory) => {
+    setSelectedCategory(cat);
+    const catDef = ASSET_CATEGORIES.find((c) => c.id === cat) || ASSET_CATEGORIES[0];
+    const firstSub = catDef.subtypes[0];
+    if (firstSub) {
+      const rnd = Math.floor(100 + Math.random() * 900);
+      setMType(firstSub.id);
+      setMBrand(firstSub.defaultBrand);
+      setMModel(firstSub.defaultModel);
+      setMCost(firstSub.defaultCost);
+      setMId(`${firstSub.idPrefix}${rnd}`);
     }
   };
 
+  // Handler for subtype change
   const handleSubtypeChange = (type: MachineType) => {
     setMType(type);
-    const meta = SUBTYPE_LOOKUP[type];
+    const meta = ASSET_SUBTYPE_LOOKUP[type];
     if (meta) {
       setMModel(meta.defaultModel);
       setMBrand(meta.defaultBrand);
+      setMCost(meta.defaultCost);
       const rnd = Math.floor(100 + Math.random() * 900);
-      if (type.startsWith('OVERLOCK')) {
-        setMId(`MC-OVK-${rnd}`);
-        setMCost(980);
-      } else if (type.startsWith('FLATLOCK')) {
-        setMId(`MC-FLK-${rnd}`);
-        setMCost(1600);
-      } else {
-        setMId(`MC-SN-${rnd}`);
-        setMCost(1500);
-      }
+      setMId(`${meta.idPrefix}${rnd}`);
     }
   };
 
+  // Handler for autofill sample
   const handleAutofill = () => {
-    setMCategoryGroup('OVERLOCK');
-    setMId('MC-OVK-4TH-204');
-    setMBrand('Yamato');
-    setMType('OVERLOCK_4_THREAD');
-    setMModel('AZ-8000G / 4-Thread High-Speed');
-    setMDate('2024-01-15');
-    setMCost(980);
-    setMMotor('SERVO');
-    setMLine('Line 02');
-    setMStation('Station 03');
-    showToast('Sample Yamato 4-Thread Overlock loaded into form.', 'info');
+    const s = SAMPLE_ASSETS[sampleIdx % SAMPLE_ASSETS.length];
+    setSampleIdx((prev) => prev + 1);
+
+    const rnd = Math.floor(100 + Math.random() * 900);
+    setSelectedCategory(s.category);
+    setMId(`${s.idPrefix}${rnd}`);
+    setMBrand(s.brand);
+    setMType(s.type);
+    setMModel(s.model);
+    setMDate(s.date);
+    setMCost(s.cost);
+    setMMotor(s.motor);
+    setMLine(s.line);
+    setMStation(s.station);
+
+    showToast(`Loaded sample: ${s.label} into form.`, 'info');
   };
 
+  // Handler for form submit & registration
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanId = mId.trim();
     if (!cleanId) return;
 
-    const newMachine: Machine = {
+    const typeName = ASSET_SUBTYPE_LOOKUP[mType]?.name || mType;
+    const newAsset: Machine = {
       id: cleanId,
-      name: `${mBrand} ${typeNameMap[mType] || mType} (${mModel})`,
+      name: `${mBrand} ${typeName} (${mModel})`,
       brand: mBrand,
       model: mModel.trim() || 'Standard Model',
-      category: 'MACHINE',
-      machineClass: mCategoryGroup,
+      category: selectedCategory,
+      machineClass:
+        selectedCategory === 'MACHINE'
+          ? mType.startsWith('OVERLOCK')
+            ? 'OVERLOCK'
+            : mType.startsWith('FLATLOCK')
+            ? 'FLATLOCK'
+            : 'SINGLE_NEEDLE'
+          : undefined,
       type: mType,
-      typeName: typeNameMap[mType] || mType,
+      typeName: typeName,
       motorType: mMotor,
       purchaseDate: mDate,
       cost: mCost,
@@ -209,67 +244,70 @@ export default function MachinesPage() {
       stationNo: mStation.trim() || 'Station 01',
       totalDowntimeMinutes: 0,
       ageYears: parseFloat(calculatedAge) || 0,
-      specs: SUBTYPE_LOOKUP[mType]?.specs || '',
+      specs: ASSET_SUBTYPE_LOOKUP[mType]?.specs || '',
     };
 
     try {
-      await createMachine(newMachine);
-      showToast(`Machine ${cleanId} registered & QR asset tag rendered!`, 'success');
+      await createMachine(newAsset);
+      showToast(`Asset ${cleanId} registered & QR sticker generated!`, 'success');
     } catch (err) {
-      showToast('Failed to register machine', 'error');
+      showToast('Failed to register asset', 'error');
       console.error(err);
     }
   };
 
+  // Handler to load any asset into the preview card
   const handleSelectForPreview = (m: Machine) => {
+    const cat = m.category || getAssetCategoryForType(m.type);
+    setSelectedCategory(cat);
     setMId(m.id);
     setMBrand(m.brand);
     setMType(m.type);
     setMModel(m.model);
     setMDate(m.purchaseDate || '2023-01-01');
-    setMCost(m.cost || 750);
+    setMCost(m.cost || 5000);
     setMMotor(m.motorType || 'SERVO');
     setMLine(m.currentLine);
     setMStation(m.stationNo);
-    const cat = getCategoryForType(m.type);
-    setMCategoryGroup(cat);
-    showToast(`Loaded ${m.id} for QR preview and editing`, 'info');
+    showToast(`Loaded ${m.id} (${m.brand} ${m.model}) for QR preview and editing`, 'info');
   };
 
-  // Construct current active machine object for document preview & printing
+  // Construct current active asset object for document preview & printing
   const currentMachineObj: Machine = useMemo(() => {
     const existing = machines.find((m) => m.id === mId);
+    const typeName = ASSET_SUBTYPE_LOOKUP[mType]?.name || mType;
     return {
       id: mId,
       name: `${mBrand} ${mModel}`,
       brand: mBrand,
       model: mModel,
       type: mType,
-      typeName: typeNameMap[mType],
+      typeName: typeName,
       cost: mCost,
       motorType: mMotor,
       currentLine: mLine,
       stationNo: mStation,
       purchaseDate: mDate,
       status: existing?.status || 'ACTIVE',
-      category: 'MACHINE',
-      department: 'Sewing Floor',
-      operator: existing?.operator || 'Floor Operator',
+      category: selectedCategory,
+      department: (mLine.includes('Line') ? 'Sewing Floor' : mLine) as any,
+      operator: existing?.operator || 'Plant Operator',
       previousLine: existing?.previousLine,
       previousStation: existing?.previousStation,
       lastMovedAt: existing?.lastMovedAt,
       lastMovedReason: existing?.lastMovedReason,
       lastMovedBy: existing?.lastMovedBy,
       totalDowntimeMinutes: existing?.totalDowntimeMinutes || 0,
-      ageYears: existing?.ageYears || 1.5,
+      ageYears: existing?.ageYears || 1.2,
+      specs: ASSET_SUBTYPE_LOOKUP[mType]?.specs || '',
     };
-  }, [mId, mBrand, mModel, mType, mCost, mMotor, mLine, mStation, mDate, machines, typeNameMap]);
+  }, [mId, mBrand, mModel, mType, mCost, mMotor, mLine, mStation, mDate, machines, selectedCategory]);
 
   const handlePrint = () => {
     window.print();
   };
 
-  // Encoded QR payload feeding all machine specifications into the QR
+  // Encoded QR payload feeding all asset specifications into the QR code
   const qrData = useMemo(() => {
     const base = `${origin}/scan/${encodeURIComponent(mId)}`;
     const params = new URLSearchParams({
@@ -277,8 +315,8 @@ export default function MachinesPage() {
       brand: mBrand || '',
       model: mModel || '',
       type: mType || '',
-      typeName: typeNameMap[mType] || '',
-      category: mCategoryGroup || '',
+      typeName: ASSET_SUBTYPE_LOOKUP[mType]?.name || mType || '',
+      category: selectedCategory || '',
       line: mLine || '',
       station: mStation || '',
       motor: mMotor || '',
@@ -286,20 +324,44 @@ export default function MachinesPage() {
       cost: mCost ? String(mCost) : '',
     });
     return `${base}?${params.toString()}`;
-  }, [origin, mId, mBrand, mModel, mType, typeNameMap, mCategoryGroup, mLine, mStation, mMotor, mDate, mCost]);
+  }, [origin, mId, mBrand, mModel, mType, selectedCategory, mLine, mStation, mMotor, mDate, mCost]);
 
-  // Filtered machines table
+  // Counts by category
+  const categoryCounts = useMemo(() => {
+    const counts = { ALL: machines.length, MACHINE: 0, TABLE: 0, CHAIR: 0, UTILITY: 0 };
+    machines.forEach((m) => {
+      const cat = m.category || getAssetCategoryForType(m.type);
+      if (cat === 'TABLE') counts.TABLE++;
+      else if (cat === 'CHAIR') counts.CHAIR++;
+      else if (cat === 'UTILITY' || cat === 'LIGHT' || cat === 'FAN') counts.UTILITY++;
+      else counts.MACHINE++;
+    });
+    return counts;
+  }, [machines]);
+
+  // Filtered assets table
   const filteredMachines = useMemo(() => {
     return machines.filter((m) => {
+      const cat = m.category || getAssetCategoryForType(m.type);
+      const matchesCategory =
+        filterCategory === 'ALL'
+          ? true
+          : filterCategory === 'UTILITY'
+          ? cat === 'UTILITY' || cat === 'LIGHT' || cat === 'FAN'
+          : cat === filterCategory;
+
       const matchesSearch =
         m.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         m.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
         m.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.currentLine.toLowerCase().includes(searchQuery.toLowerCase());
+        (m.typeName && m.typeName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        m.currentLine.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (m.stationNo && m.stationNo.toLowerCase().includes(searchQuery.toLowerCase()));
+
       const matchesLine = filterLine === 'ALL' || m.currentLine === filterLine;
-      return matchesSearch && matchesLine;
+      return matchesCategory && matchesSearch && matchesLine;
     });
-  }, [machines, searchQuery, filterLine]);
+  }, [machines, searchQuery, filterLine, filterCategory]);
 
   return (
     <div className="space-y-6">
@@ -308,59 +370,73 @@ export default function MachinesPage() {
         <div>
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <PlusCircle className="w-5 h-5 text-indigo-600" />
-            <span>Machine Registry & Instant QR Generation</span>
+            <span>Plant Asset Registry &amp; Instant QR Generation</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Register new industrial sewing machines, calculate age, generate QR asset labels, and preview floor dispatch triggers.
+            Register every factory asset &mdash; sewing machinery, cutting tables, operator seating, high-bay lighting &amp; utilities &mdash; and generate printable QR stickers.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleAutofill}
-            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-200 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs"
+            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-200 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
           >
             <Wand2 className="w-3.5 h-3.5" />
-            <span>Autofill Sample</span>
+            <span>Autofill Sample Asset</span>
           </button>
         </div>
       </div>
 
       {/* Main Grid: Form (Left) & QR Tag Preview (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left 7 Columns: Machine Input Form */}
+        {/* Left 7 Columns: Asset Input Form */}
         <div className="lg:col-span-7 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5 no-print">
           <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-            <Wrench className="w-4 h-4 text-indigo-600" />
-            <span>Machine Specifications</span>
+            <Tag className="w-4 h-4 text-indigo-600" />
+            <span>Asset Specifications</span>
           </h3>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Machine Category Tabs */}
+            {/* Asset Category Selection Tabs */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                Machine Category *
+                Factory Asset Category *
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {MACHINE_CATALOG.map((cat) => {
-                  const isSelected = mCategoryGroup === cat.id;
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {ASSET_CATEGORIES.map((cat) => {
+                  const isSelected = selectedCategory === cat.id;
                   return (
                     <button
                       key={cat.id}
                       type="button"
-                      onClick={() => handleCategoryChange(cat.id)}
+                      onClick={() => handleCategorySelect(cat.id)}
                       className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
                         isSelected
                           ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs ring-2 ring-indigo-500/20'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      <div className="font-bold text-xs">{cat.name}</div>
+                      <div className="flex items-center gap-1.5 font-bold text-xs">
+                        {cat.id === 'MACHINE' && (
+                          <Wrench className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-indigo-600'}`} />
+                        )}
+                        {cat.id === 'TABLE' && (
+                          <LayoutGrid className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-emerald-600'}`} />
+                        )}
+                        {cat.id === 'CHAIR' && (
+                          <Armchair className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-purple-600'}`} />
+                        )}
+                        {cat.id === 'UTILITY' && (
+                          <Zap className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-cyan-600'}`} />
+                        )}
+                        <span>{cat.singular}</span>
+                      </div>
                       <div
-                        className={`text-[11px] font-medium mt-1 ${
+                        className={`text-[10px] font-medium mt-1 truncate ${
                           isSelected ? 'text-indigo-100' : 'text-slate-500'
                         }`}
                       >
-                        Brands: <span className="font-bold">{cat.brands.join(', ')}</span>
+                        {cat.subtypes.length} Varieties
                       </div>
                     </button>
                   );
@@ -372,7 +448,7 @@ export default function MachinesPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Machine Subtype / Variety *
+                  Asset Variety / Model Subtype *
                 </label>
                 <select
                   required
@@ -380,20 +456,20 @@ export default function MachinesPage() {
                   onChange={(e) => handleSubtypeChange(e.target.value as MachineType)}
                   className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-slate-800 font-bold"
                 >
-                  {MACHINE_CATALOG.find((c) => c.id === mCategoryGroup)?.subtypes.map((sub) => (
+                  {currentCategoryDef.subtypes.map((sub) => (
                     <option key={sub.id} value={sub.id}>
                       {sub.name}
                     </option>
                   ))}
                 </select>
                 <span className="text-[10px] text-slate-500 mt-1 block leading-tight">
-                  {SUBTYPE_LOOKUP[mType]?.specs}
+                  {ASSET_SUBTYPE_LOOKUP[mType]?.specs || 'Standard industrial plant specification'}
                 </span>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Brand / Make *
+                  Brand / Manufacturer OEM *
                 </label>
                 <select
                   required
@@ -401,14 +477,14 @@ export default function MachinesPage() {
                   onChange={(e) => setMBrand(e.target.value)}
                   className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-slate-800 font-bold"
                 >
-                  {MACHINE_CATALOG.find((c) => c.id === mCategoryGroup)?.brands.map((b) => (
+                  {availableBrands.map((b) => (
                     <option key={b} value={b}>
                       {b} OEM
                     </option>
                   ))}
                 </select>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Strictly verified OEM brand for {MACHINE_CATALOG.find((c) => c.id === mCategoryGroup)?.name}
+                  Verified supplier for {currentCategoryDef.singular}
                 </span>
               </div>
             </div>
@@ -417,7 +493,7 @@ export default function MachinesPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Machine Asset ID *
+                  Asset ID (Barcode / QR Unique Tag) *
                 </label>
                 <input
                   type="text"
@@ -427,12 +503,12 @@ export default function MachinesPage() {
                   placeholder="e.g. MC-OVK-4TH-101"
                   className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none font-mono font-bold text-slate-900"
                 />
-                <span className="text-[10px] text-slate-400">Unique factory barcode / stencil</span>
+                <span className="text-[10px] text-slate-400">Unique factory barcode / physical stencil</span>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Model Number / Spec *
+                  Model Series / Specification *
                 </label>
                 <input
                   type="text"
@@ -445,10 +521,11 @@ export default function MachinesPage() {
               </div>
             </div>
 
+            {/* Date, Age, and Valuation */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Purchase Date *
+                  Installation / Purchase Date *
                 </label>
                 <input
                   type="date"
@@ -460,7 +537,7 @@ export default function MachinesPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Calculated Age
+                  Calculated Asset Age
                 </label>
                 <input
                   type="text"
@@ -471,7 +548,7 @@ export default function MachinesPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Purchase Cost (₹ INR)
+                  Capital Valuation (₹ INR)
                 </label>
                 <input
                   type="number"
@@ -483,23 +560,51 @@ export default function MachinesPage() {
               </div>
             </div>
 
+            {/* Power / Drive, Department, and Station */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {selectedCategory === 'MACHINE' ? (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Motor Drive Type
+                  </label>
+                  <select
+                    value={mMotor}
+                    onChange={(e) => setMMotor(e.target.value as MotorType)}
+                    className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-slate-800"
+                  >
+                    <option value="SERVO">Direct-Drive Servo (Energy Saving)</option>
+                    <option value="CLUTCH">Traditional Clutch Motor</option>
+                  </select>
+                </div>
+              ) : selectedCategory === 'UTILITY' ? (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Power Connection
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value="220V AC / 415V Three-Phase"
+                    className="w-full px-3 py-2 text-sm bg-slate-100 border border-slate-200 text-slate-700 rounded-xl font-medium outline-none cursor-not-allowed"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Asset Power Class
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value="Non-Powered Industrial Asset"
+                    className="w-full px-3 py-2 text-sm bg-slate-100 border border-slate-200 text-slate-700 rounded-xl font-medium outline-none cursor-not-allowed"
+                  />
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Motor Drive Type
-                </label>
-                <select
-                  value={mMotor}
-                  onChange={(e) => setMMotor(e.target.value as MotorType)}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-slate-800"
-                >
-                  <option value="SERVO">Direct-Drive Servo (Energy Saving)</option>
-                  <option value="CLUTCH">Traditional Clutch Motor</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Assigned Factory Department / Line
+                  Assigned Factory Location *
                 </label>
                 <select
                   value={mLine}
@@ -524,15 +629,16 @@ export default function MachinesPage() {
                   </optgroup>
                 </select>
               </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Line Station No.
+                  Floor Bay / Station No.
                 </label>
                 <input
                   type="text"
                   value={mStation}
                   onChange={(e) => setMStation(e.target.value)}
-                  placeholder="Station 08"
+                  placeholder="Station 08 / Bay 02"
                   className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-slate-800 font-medium"
                 />
               </div>
@@ -544,19 +650,19 @@ export default function MachinesPage() {
                 className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition flex items-center gap-2 cursor-pointer"
               >
                 <Tag className="w-4 h-4" />
-                <span>Register Machine & Render Tag</span>
+                <span>Register Asset &amp; Render QR Tag</span>
               </button>
             </div>
           </form>
         </div>
 
-        {/* Right 5 Columns: Printable QR Machine Sticker Preview */}
+        {/* Right 5 Columns: Printable QR Sticker Preview */}
         <div className="lg:col-span-5 space-y-4 print:w-full print:max-w-none print:m-0">
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4 print:border-none print:shadow-none print:p-0">
             <div className="flex items-center justify-between no-print">
               <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
                 <Tag className="w-4 h-4 text-indigo-600" />
-                <span>Machine QR Sticker Preview</span>
+                <span>Asset QR Sticker Preview</span>
               </h3>
               <span className="text-[10px] bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded uppercase">
                 Ready to Paste
@@ -568,7 +674,7 @@ export default function MachinesPage() {
               id="printable-qr-tag"
               className="bg-white border-2 border-slate-900 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center text-center mx-auto max-w-[280px] print:border-2 print:border-black print:rounded-none print:shadow-none print:p-4 print:m-auto"
             >
-              {/* High-Resolution QR Code containing all machine specifications */}
+              {/* High-Resolution QR Code containing all asset specifications */}
               <div className="p-3 bg-white border-2 border-slate-900 rounded-xl flex items-center justify-center shadow-xs">
                 <QRCodeSVG
                   value={qrData}
@@ -579,13 +685,13 @@ export default function MachinesPage() {
                 />
               </div>
 
-              {/* Machine Asset ID */}
+              {/* Asset Identifier */}
               <div className="mt-3.5">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Asset ID
                 </div>
                 <div className="text-lg font-black text-slate-950 font-mono tracking-wide">
-                  {mId || 'MC-SNLS-101'}
+                  {mId || 'ASSET-101'}
                 </div>
               </div>
             </div>
@@ -596,7 +702,7 @@ export default function MachinesPage() {
                 type="button"
                 onClick={handlePrint}
                 className="w-full sm:flex-1 py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm"
-                title="Direct print QR sticker for machine"
+                title="Direct print QR sticker for asset"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>Print QR Sticker</span>
@@ -640,21 +746,21 @@ export default function MachinesPage() {
               <code className="bg-white/80 px-1 py-0.5 rounded font-mono text-[10px] text-indigo-800 border border-indigo-200">
                 /scan/{mId}
               </code>{' '}
-              opens two instantaneous mobile workflows: <b>1) Log Breakdown</b> (dispatches critical line stop) or <b>2) Relocate Machine</b> (rebalances production lines).
+              opens instantaneous mobile workflows: <b>1) Log Breakdown / Defect</b> (triggers mechanic dispatch) or <b>2) Relocate Asset</b> (rebalances factory departments).
             </p>
           </div>
         </div>
       </div>
 
-      {/* Registered Machines Data Table */}
+      {/* Registered Factory Assets Data Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 no-print">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              Registered Factory Machinery ({machines.length} Units)
+              Registered Factory Assets ({machines.length} Total Units)
             </h3>
             <p className="text-xs text-slate-500">
-              Select any machine to load specifications into the tag generator or preview quick actions.
+              Select any asset to load specifications into the tag generator or preview quick actions.
             </p>
           </div>
 
@@ -665,7 +771,7 @@ export default function MachinesPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search machine ID, make, line..."
+                placeholder="Search asset ID, make, line..."
                 className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800"
               />
             </div>
@@ -681,15 +787,83 @@ export default function MachinesPage() {
               <option value="Line 03">Sewing - Line 03</option>
               <option value="Line 04">Sewing - Line 04</option>
               <option value="Cutting Department">Cutting Dept</option>
-              <option value="Finishing & Pressing">Finishing & Pressing</option>
-              <option value="Embroidery & Printing">Embroidery & Printing</option>
-              <option value="Quality & Packing">Quality & Packing</option>
-              <option value="Warehouse & Storage">Warehouse & Storage</option>
-              <option value="Central Utilities & Plant">Utilities & Plant</option>
+              <option value="Finishing & Pressing">Finishing &amp; Pressing</option>
+              <option value="Embroidery & Printing">Embroidery &amp; Printing</option>
+              <option value="Quality & Packing">Quality &amp; Packing</option>
+              <option value="Warehouse & Storage">Warehouse &amp; Storage</option>
+              <option value="Central Utilities & Plant">Utilities &amp; Plant</option>
               <option value="Maintenance Workshop">Maintenance Workshop</option>
               <option value="Scrap Bay">Scrap Bay</option>
             </select>
           </div>
+        </div>
+
+        {/* Category Filter Pills */}
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={() => setFilterCategory('ALL')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+              filterCategory === 'ALL'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <span>All Assets</span>
+            <span className="text-[10px] opacity-75 font-mono">({categoryCounts.ALL})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterCategory('MACHINE')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+              filterCategory === 'MACHINE'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+            }`}
+          >
+            <Wrench className="w-3 h-3" />
+            <span>Machinery</span>
+            <span className="text-[10px] opacity-75 font-mono">({categoryCounts.MACHINE})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterCategory('TABLE')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+              filterCategory === 'TABLE'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+            }`}
+          >
+            <LayoutGrid className="w-3 h-3" />
+            <span>Tables</span>
+            <span className="text-[10px] opacity-75 font-mono">({categoryCounts.TABLE})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterCategory('CHAIR')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+              filterCategory === 'CHAIR'
+                ? 'bg-purple-600 text-white shadow-xs'
+                : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+            }`}
+          >
+            <Armchair className="w-3 h-3" />
+            <span>Chairs &amp; Seating</span>
+            <span className="text-[10px] opacity-75 font-mono">({categoryCounts.CHAIR})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterCategory('UTILITY')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+              filterCategory === 'UTILITY'
+                ? 'bg-cyan-600 text-white shadow-xs'
+                : 'bg-cyan-50 text-cyan-700 hover:bg-cyan-100'
+            }`}
+          >
+            <Zap className="w-3 h-3" />
+            <span>Utilities &amp; Lighting</span>
+            <span className="text-[10px] opacity-75 font-mono">({categoryCounts.UTILITY})</span>
+          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -697,10 +871,11 @@ export default function MachinesPage() {
             <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
               <tr>
                 <th className="py-3 px-4">Asset ID</th>
+                <th className="py-3 px-4">Category</th>
                 <th className="py-3 px-4">Make / Model</th>
-                <th className="py-3 px-4">Class</th>
-                <th className="py-3 px-4">Current Line</th>
-                <th className="py-3 px-4">Station</th>
+                <th className="py-3 px-4">Subtype Spec</th>
+                <th className="py-3 px-4">Location</th>
+                <th className="py-3 px-4">Station / Bay</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4">Age</th>
                 <th className="py-3 px-4 text-right">Actions</th>
@@ -710,6 +885,7 @@ export default function MachinesPage() {
               {filteredMachines.map((m) => {
                 const isDown = m.status === 'BREAKDOWN';
                 const isBuffer = m.status === 'BUFFER';
+                const cat = m.category || getAssetCategoryForType(m.type);
 
                 return (
                   <tr
@@ -719,10 +895,33 @@ export default function MachinesPage() {
                   >
                     <td className="py-3 px-4 font-mono font-bold text-slate-900">{m.id}</td>
                     <td className="py-3 px-4">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          cat === 'TABLE'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : cat === 'CHAIR'
+                            ? 'bg-purple-50 text-purple-700 border-purple-200'
+                            : cat === 'UTILITY' || cat === 'LIGHT' || cat === 'FAN'
+                            ? 'bg-cyan-50 text-cyan-700 border-cyan-200'
+                            : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                        }`}
+                      >
+                        {cat === 'TABLE' && <LayoutGrid className="w-2.5 h-2.5" />}
+                        {cat === 'CHAIR' && <Armchair className="w-2.5 h-2.5" />}
+                        {(cat === 'UTILITY' || cat === 'LIGHT' || cat === 'FAN') && (
+                          <Zap className="w-2.5 h-2.5" />
+                        )}
+                        {cat === 'MACHINE' && <Wrench className="w-2.5 h-2.5" />}
+                        <span>{cat}</span>
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
                       <span className="font-bold text-slate-800">{m.brand}</span>{' '}
                       <span className="text-slate-500">{m.model}</span>
                     </td>
-                    <td className="py-3 px-4 text-slate-700">{m.typeName || m.type}</td>
+                    <td className="py-3 px-4 text-slate-700">
+                      {m.typeName || ASSET_SUBTYPE_LOOKUP[m.type]?.name || m.type}
+                    </td>
                     <td className="py-3 px-4 font-semibold text-slate-800">{m.currentLine}</td>
                     <td className="py-3 px-4 text-slate-600">{m.stationNo}</td>
                     <td className="py-3 px-4">

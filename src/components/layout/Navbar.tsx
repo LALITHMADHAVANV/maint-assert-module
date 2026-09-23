@@ -122,7 +122,7 @@ export function Navbar() {
         icon: History,
       },
       {
-        label: 'Factory Machine Fleet',
+        label: 'Factory Assets & QR',
         href: '/dashboard/machines',
         icon: QrCode,
       },
@@ -175,7 +175,7 @@ export function Navbar() {
         highlight: true,
       },
       {
-        label: 'Machine Fleet & Relocation',
+        label: 'Asset Fleet & Relocation',
         href: '/dashboard/machines',
         icon: QrCode,
       },
@@ -212,7 +212,7 @@ export function Navbar() {
         icon: Layers,
       },
       {
-        label: 'Machines & QR',
+        label: 'Assets & QR',
         href: '/dashboard/machines',
         icon: QrCode,
       },
