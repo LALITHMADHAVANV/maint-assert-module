@@ -263,19 +263,19 @@ export function ScanModal({
                         Embedded Metric Rule Peeling or Worn Off
                       </option>
                     </>
-                  ) : currentMachine?.category === 'VEHICLE' ? (
+                  ) : currentMachine?.category === 'CHAIR' ? (
                     <>
-                      <option value="Traction Battery Low / Won't Hold Charge">
-                        Traction Battery Low / Won't Hold Charge
+                      <option value="Hydraulic Gas-Lift Cylinder Sinking Under Weight">
+                        Hydraulic Gas-Lift Cylinder Sinking Under Weight
                       </option>
-                      <option value="Hydraulic Lift Mechanism Sticking / Leaking">
-                        Hydraulic Lift Mechanism Sticking / Leaking
+                      <option value="Castor Wheel Broken / Stiff Swivel Movement">
+                        Castor Wheel Broken / Stiff Swivel Movement
                       </option>
-                      <option value="Castor/Tire Damaged or Wobbly Movement">
-                        Castor/Tire Damaged or Wobbly Movement
+                      <option value="Lumbar Backrest Support Loose / Bolt Sheared">
+                        Lumbar Backrest Support Loose / Bolt Sheared
                       </option>
-                      <option value="Brake System Failure / Warning Alarm Fault">
-                        Brake System Failure / Warning Alarm Fault
+                      <option value="Seat Foam Compressed / Fabric Torn">
+                        Seat Foam Compressed / Fabric Torn
                       </option>
                     </>
                   ) : currentMachine?.category === 'LIGHT' || currentMachine?.type?.startsWith('LIGHT') || currentMachine?.id?.startsWith('LGT') ? (

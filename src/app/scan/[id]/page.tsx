@@ -317,19 +317,19 @@ export default function MobileScanPage() {
                         Table Leg Structural Weld / Bolt Cracked
                       </option>
                     </>
-                  ) : machine.category === 'VEHICLE' ? (
+                  ) : machine.category === 'CHAIR' ? (
                     <>
-                      <option value="Traction Battery Low / Won't Hold Charge">
-                        Traction Battery Low / Won't Hold Charge
+                      <option value="Pneumatic Gas Cylinder Sinking / Pressure Loss">
+                        Pneumatic Gas Cylinder Sinking / Pressure Loss
                       </option>
-                      <option value="Hydraulic Lift Mechanism Sticking / Leaking">
-                        Hydraulic Lift Mechanism Sticking / Leaking
+                      <option value="Castor Wheel Broken / Thread Jammed">
+                        Castor Wheel Broken / Thread Jammed
                       </option>
-                      <option value="Castor/Tire Damaged or Wobbly Movement">
-                        Castor/Tire Damaged or Wobbly Movement
+                      <option value="Lumbar Support / Backrest Tilt Broken">
+                        Lumbar Support / Backrest Tilt Broken
                       </option>
-                      <option value="Brake System Failure / Warning Alarm Fault">
-                        Brake System Failure / Warning Alarm Fault
+                      <option value="Seat Base Foam Cracked / Loose Mounting">
+                        Seat Base Foam Cracked / Loose Mounting
                       </option>
                     </>
                   ) : machine.category === 'UTILITY' || machine.category === 'LIGHT' || machine.category === 'FAN' ? (

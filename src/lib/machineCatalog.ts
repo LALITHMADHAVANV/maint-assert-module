@@ -209,7 +209,7 @@ export const MACHINE_CATALOG: MachineCategoryDef[] = [
 ];
 
 // ============================================================================
-// COMPREHENSIVE ALL-ASSET CATALOG (MACHINES, TABLES, VEHICLES, UTILITIES)
+// COMPREHENSIVE ALL-ASSET CATALOG (MACHINES, TABLES, CHAIRS, UTILITIES)
 // ============================================================================
 
 export interface AssetSubtypeDef {
@@ -229,7 +229,7 @@ export interface AssetCategoryMeta {
   name: string;
   singular: string;
   description: string;
-  iconName: 'Wrench' | 'LayoutGrid' | 'Truck' | 'Zap';
+  iconName: 'Wrench' | 'LayoutGrid' | 'Armchair' | 'Zap';
   badgeColor: string;
   idPrefix: string;
   subtypes: AssetSubtypeDef[];
@@ -501,57 +501,57 @@ export const ASSET_CATEGORIES: AssetCategoryMeta[] = [
     ],
   },
   {
-    id: 'VEHICLE',
-    name: 'Vehicles & Transport',
-    singular: 'Vehicle',
-    description: 'Forklifts, pallet jacks, & material handling trolleys',
-    iconName: 'Truck',
+    id: 'CHAIR',
+    name: 'Chairs & Floor Seating',
+    singular: 'Chair',
+    description: 'Operator ergonomic chairs, supervisor chairs & workshop stools',
+    iconName: 'Armchair',
     badgeColor: 'bg-teal-100 text-teal-800 border-teal-200',
-    idPrefix: 'VEH-',
+    idPrefix: 'CHR-',
     subtypes: [
       {
-        id: 'VEHICLE_FORKLIFT',
-        name: 'Heavy Duty Forklift',
-        category: 'VEHICLE',
-        brands: ['Toyota', 'Godrej', 'Yale'],
-        defaultBrand: 'Toyota',
-        defaultModel: '8FBE15T',
-        defaultCost: 850000,
-        idPrefix: 'VEH-FL-',
-        specs: 'Electric 3-wheel forklift, 1.5-ton capacity, 4m lift height',
+        id: 'CHAIR_OPERATOR',
+        name: 'Ergonomic Sewing Swivel Chair',
+        category: 'CHAIR',
+        brands: ['Featherlite', 'Godrej', 'Wipro'],
+        defaultBrand: 'Featherlite',
+        defaultModel: 'Optima-Sewing Swivel 360',
+        defaultCost: 4500,
+        idPrefix: 'CHR-OPR-',
+        specs: 'Pneumatic height adjustment, heavy-duty polyurethane seat, 360° swivel with lumbar support',
       },
       {
-        id: 'VEHICLE_PALLET_JACK',
-        name: 'Manual/Electric Pallet Jack',
-        category: 'VEHICLE',
-        brands: ['Godrej', 'Voltas'],
-        defaultBrand: 'Godrej',
-        defaultModel: 'GPT-20',
-        defaultCost: 35000,
-        idPrefix: 'VEH-PJ-',
-        specs: '2-ton capacity hand pallet truck with tandem rollers',
+        id: 'CHAIR_SUPERVISOR',
+        name: 'High-Back Supervisor Chair',
+        category: 'CHAIR',
+        brands: ['Featherlite', 'Godrej'],
+        defaultBrand: 'Featherlite',
+        defaultModel: 'Exec-Line Lead Mesh',
+        defaultCost: 9800,
+        idPrefix: 'CHR-SUP-',
+        specs: 'Breathable mesh back, multi-lock synchro-tilt mechanism, padded armrests',
       },
       {
-        id: 'VEHICLE_TROLLEY',
-        name: 'Material Handling Trolley',
-        category: 'VEHICLE',
-        brands: ['Custom OEM', 'SteelCraft'],
+        id: 'CHAIR_STOOL',
+        name: 'Mechanic Workshop Stool',
+        category: 'CHAIR',
+        brands: ['SteelCraft', 'Godrej'],
         defaultBrand: 'SteelCraft',
-        defaultModel: 'Heavy-Duty Cage Trolley',
-        defaultCost: 15000,
-        idPrefix: 'VEH-TR-',
-        specs: '4-wheel industrial cage trolley with 500kg load capacity',
+        defaultModel: 'ToolBay-Steel Rolling Stool',
+        defaultCost: 3200,
+        idPrefix: 'CHR-STL-',
+        specs: 'Heavy-duty industrial round stool with bottom tool tray and castor wheels',
       },
       {
-        id: 'VEHICLE_CUSTOM',
-        name: 'Custom Vehicle / Transport',
-        category: 'VEHICLE',
-        brands: ['Custom OEM'],
+        id: 'CHAIR_CUSTOM',
+        name: 'Custom / New Seating Model',
+        category: 'CHAIR',
+        brands: ['Featherlite', 'Godrej', 'Wipro', 'Steelcase', 'Custom OEM'],
         defaultBrand: 'Custom OEM',
-        defaultModel: 'Custom Transport Spec',
-        defaultCost: 45000,
-        idPrefix: 'VEH-CST-',
-        specs: 'Custom factory transport vehicle or cart',
+        defaultModel: 'Custom Seating Spec',
+        defaultCost: 4500,
+        idPrefix: 'CHR-CST-',
+        specs: 'Custom factory chair, drafting stool, or operator seating',
       },
     ],
   },
@@ -724,7 +724,7 @@ export function getAssetCategoryForType(type: MachineType): AssetCategory {
   const meta = ASSET_SUBTYPE_LOOKUP[type];
   if (meta) return meta.category;
   if (type.startsWith('TABLE_')) return 'TABLE';
-  if (type.startsWith('VEHICLE_')) return 'VEHICLE';
+  if (type.startsWith('CHAIR_')) return 'CHAIR';
   if (type.startsWith('LIGHT_') || type.startsWith('FAN_') || type.startsWith('UTILITY_')) return 'UTILITY';
   return 'MACHINE';
 }
