@@ -710,6 +710,7 @@ export default function FloorTrackerPage() {
       MACHINE: 'OVERLOCK_4_THREAD',
       TABLE: 'TABLE_SEWING',
       CHAIR: 'CHAIR_OPERATOR',
+      VEHICLE: 'VEHICLE_FORKLIFT',
       LIGHT: 'LIGHT_HIGHBAY',
       FAN: 'FAN_CEILING',
       UTILITY: 'UTILITY_BOILER',
