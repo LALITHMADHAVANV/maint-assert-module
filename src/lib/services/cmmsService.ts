@@ -807,3 +807,21 @@ export async function updateRequisitionStatus(
     }
   }
 }
+export async function approveRequisition(
+  reqId: string,
+  reviewerName: string,
+  notes: string,
+  status: RequisitionStatus
+): Promise<void> {
+  const finalNotes = "Approved by " + reviewerName + ": " + notes;
+  await updateRequisitionStatus(reqId, status, finalNotes);
+}
+
+export async function rejectRequisition(
+  reqId: string,
+  reviewerName: string,
+  notes: string
+): Promise<void> {
+  const finalNotes = "Rejected by " + reviewerName + ": " + notes;
+  await updateRequisitionStatus(reqId, 'REJECTED', finalNotes);
+}
