@@ -11,20 +11,12 @@ import {
   CalendarCheck,
   Layers,
   LogOut,
-  Sparkles,
-  Database,
   Camera,
   RefreshCw,
-  UserCheck,
   Crown,
   Package,
-  ShieldCheck,
-  HardHat,
-  MessageSquare,
-  ChevronDown,
   Users,
   UserPlus,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { LiveClock } from './LiveClock';
 import { useAuth } from '@/context/AuthContext';
@@ -37,12 +29,11 @@ import {
 } from '@/lib/services/cmmsService';
 import { ScanModal } from '@/components/scan/ScanModal';
 import { CameraScannerModal } from '@/components/scan/CameraScannerModal';
-import { UserRole } from '@/types/cmms';
 
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, role, isFirebaseLive, loginAsRole, logout } = useAuth();
+  const { user, role, logout } = useAuth();
   const { showToast } = useToast();
 
   const [lowStockCount, setLowStockCount] = useState<number>(0);
@@ -52,7 +43,6 @@ export function Navbar() {
 
   const [isScanModalOpen, setIsScanModalOpen] = useState<boolean>(false);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState<boolean>(false);
-  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState<boolean>(false);
   const [isSeeding, setIsSeeding] = useState<boolean>(false);
 
   useEffect(() => {
@@ -97,46 +87,6 @@ export function Navbar() {
       console.error(e);
     } finally {
       setIsSeeding(false);
-    }
-  };
-
-  const handleSwitchRole = async (newRole: UserRole) => {
-    setIsRoleDropdownOpen(false);
-    try {
-      await loginAsRole(newRole);
-
-      let targetRoute = '/dashboard/machines';
-      let label = 'Staff';
-
-      switch (newRole) {
-        case 'CEO':
-          label = 'CEO (Dr. K. Ramanathan)';
-          targetRoute = '/dashboard/messages';
-          break;
-        case 'ADMIN':
-        case 'ASSET_MANAGER':
-          label = 'Plant Admin (V. Sundaram)';
-          targetRoute = '/dashboard/machines';
-          break;
-        case 'SENIOR_MECHANIC':
-          label = 'Senior Master Mechanic (Ramesh Kumar)';
-          targetRoute = '/dashboard/calendar';
-          break;
-        case 'MECHANIC':
-          label = 'Line Mechanic (Suresh Babu)';
-          targetRoute = '/dashboard/calendar';
-          break;
-        case 'STORE_PERSON':
-          label = 'Store Person (M. Arumugam)';
-          targetRoute = '/dashboard/store-inbox';
-          break;
-      }
-
-      showToast(`Authenticated via Firebase as ${label}!`, 'info');
-      router.push(targetRoute);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      showToast(`Firebase Auth error: ${msg}`, 'error');
     }
   };
 
@@ -403,150 +353,37 @@ export function Navbar() {
                 </>
               )}
 
-              {/* User Profile & Role Switcher Popover */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                  className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 py-1 px-2.5 rounded-xl border border-slate-700 transition text-left"
+              {/* User Profile & Sign Out Button */}
+              <div className="flex items-center space-x-2 bg-slate-900 py-1 pl-2.5 pr-1.5 rounded-xl border border-slate-700">
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold uppercase shadow-sm ${getRoleBadgeColor()}`}
                 >
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold uppercase shadow-sm ${getRoleBadgeColor()}`}
-                  >
-                    {role === 'CEO' ? (
-                      <Crown className="w-3.5 h-3.5 text-amber-300" />
-                    ) : role === 'STORE_PERSON' ? (
-                      <Package className="w-3.5 h-3.5 text-white" />
-                    ) : (
-                      user?.name?.charAt(0) || 'M'
-                    )}
+                  {role === 'CEO' ? (
+                    <Crown className="w-3.5 h-3.5 text-amber-300" />
+                  ) : role === 'STORE_PERSON' ? (
+                    <Package className="w-3.5 h-3.5 text-white" />
+                  ) : (
+                    user?.name?.charAt(0) || 'M'
+                  )}
+                </div>
+                <div className="hidden md:block">
+                  <div className="text-xs font-bold leading-tight text-white">
+                    {user?.name || 'Staff User'}
                   </div>
-                  <div className="hidden md:block">
-                    <div className="text-xs font-bold leading-tight flex items-center gap-1">
-                      <span>{user?.name || 'Dr. K. Ramanathan'}</span>
-                      <ChevronDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                    <div className="text-[10px] font-bold tracking-wider uppercase text-slate-300">
-                      {role}
-                    </div>
+                  <div className="text-[10px] font-bold tracking-wider uppercase text-slate-400">
+                    {role}
                   </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    await logout();
+                    router.push('/');
+                  }}
+                  className="ml-1 p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-4 h-4" />
                 </button>
-
-                {/* Dropdown Menu for 5 Personas */}
-                {isRoleDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-64 bg-slate-900 rounded-2xl shadow-2xl border border-slate-700 p-2 z-50 animate-in fade-in zoom-in-95">
-                    <div className="px-3 py-2 border-b border-slate-800 mb-1">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        Switch Persona
-                      </span>
-                    </div>
-
-                    <div className="space-y-1 text-xs">
-                      {/* CEO */}
-                      <button
-                        onClick={() => handleSwitchRole('CEO')}
-                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2.5 transition ${
-                          role === 'CEO'
-                            ? 'bg-purple-900/60 text-purple-200 font-bold border border-purple-700'
-                            : 'text-slate-300 hover:bg-slate-800'
-                        }`}
-                      >
-                        <div className="w-6 h-6 rounded-lg bg-purple-600 text-amber-300 flex items-center justify-center">
-                          <Crown className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-bold">Dr. K. Ramanathan</div>
-                          <div className="text-[10px] text-purple-400">Chief Executive Officer</div>
-                        </div>
-                      </button>
-
-                      {/* Admin */}
-                      <button
-                        onClick={() => handleSwitchRole('ADMIN')}
-                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2.5 transition ${
-                          role === 'ADMIN' || role === 'ASSET_MANAGER'
-                            ? 'bg-blue-900/60 text-blue-200 font-bold border border-blue-700'
-                            : 'text-slate-300 hover:bg-slate-800'
-                        }`}
-                      >
-                        <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center">
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-bold">V. Sundaram</div>
-                          <div className="text-[10px] text-blue-400">Plant Administrator</div>
-                        </div>
-                      </button>
-
-                      {/* Store Person */}
-                      <button
-                        onClick={() => handleSwitchRole('STORE_PERSON')}
-                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2.5 transition ${
-                          role === 'STORE_PERSON'
-                            ? 'bg-emerald-900/60 text-emerald-200 font-bold border border-emerald-700'
-                            : 'text-slate-300 hover:bg-slate-800'
-                        }`}
-                      >
-                        <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
-                          <Package className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-bold">M. Arumugam</div>
-                          <div className="text-[10px] text-emerald-400">Tool Crib Storekeeper</div>
-                        </div>
-                      </button>
-
-                      {/* Senior Mechanic */}
-                      <button
-                        onClick={() => handleSwitchRole('SENIOR_MECHANIC')}
-                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2.5 transition ${
-                          role === 'SENIOR_MECHANIC'
-                            ? 'bg-indigo-900/60 text-indigo-200 font-bold border border-indigo-700'
-                            : 'text-slate-300 hover:bg-slate-800'
-                        }`}
-                      >
-                        <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center">
-                          <Wrench className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-bold">Ramesh Kumar</div>
-                          <div className="text-[10px] text-indigo-400">Senior Master Mechanic</div>
-                        </div>
-                      </button>
-
-                      {/* Mechanic */}
-                      <button
-                        onClick={() => handleSwitchRole('MECHANIC')}
-                        className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2.5 transition ${
-                          role === 'MECHANIC'
-                            ? 'bg-amber-900/60 text-amber-200 font-bold border border-amber-700'
-                            : 'text-slate-300 hover:bg-slate-800'
-                        }`}
-                      >
-                        <div className="w-6 h-6 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center">
-                          <HardHat className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-bold">Suresh Babu</div>
-                          <div className="text-[10px] text-amber-400">Line Sewing Mechanic</div>
-                        </div>
-                      </button>
-                    </div>
-
-                    <div className="pt-2 mt-2 border-t border-slate-800 flex items-center justify-between px-2">
-                      <button
-                        onClick={() => {
-                          setIsRoleDropdownOpen(false);
-                          logout();
-                          router.push('/');
-                        }}
-                        className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 py-1 font-semibold"
-                      >
-                        <LogOut className="w-3.5 h-3.5" />
-                        <span>Sign Out</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
