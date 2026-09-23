@@ -16,7 +16,7 @@ import {
   ArrowRight,
   Filter,
   LayoutGrid,
-  Armchair,
+  Truck,
   Zap,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -63,18 +63,18 @@ const SAMPLE_ASSETS = [
     label: 'Eastman Air-Float Fabric Spreading Table',
   },
   {
-    category: 'CHAIR' as AssetCategory,
-    idPrefix: 'CHR-OPR-',
-    brand: 'Featherlite',
-    type: 'CHAIR_OPERATOR' as MachineType,
-    model: 'Optima-Sewing Swivel 360',
+    category: 'VEHICLE' as AssetCategory,
+    idPrefix: 'VEH-FL-',
+    brand: 'Toyota',
+    type: 'VEHICLE_FORKLIFT' as MachineType,
+    model: '8FBE15T',
     date: '2023-08-10',
-    cost: 4500,
+    cost: 850000,
     motor: 'SERVO' as MotorType,
-    line: 'Line 02' as FloorLine,
-    station: 'Station 07',
-    specs: 'Pneumatic height adjustment, heavy-duty polyurethane seat, 360° swivel with lumbar support',
-    label: 'Featherlite Ergonomic Operator Swivel Chair',
+    line: 'Warehouse & Storage' as FloorLine,
+    station: 'Loading Bay 01',
+    specs: 'Electric 3-wheel forklift, 1.5-ton capacity, 4m lift height',
+    label: 'Toyota Heavy Duty Forklift',
   },
   {
     category: 'UTILITY' as AssetCategory,
@@ -214,8 +214,8 @@ export default function MachinesPage() {
     if (type === '__CUSTOM_TYPE__') {
       setIsCustomType(true);
       const prefix =
-        selectedCategory === 'CHAIR'
-          ? 'CHR-CST-'
+        selectedCategory === 'VEHICLE'
+          ? 'VEH-CST-'
           : selectedCategory === 'TABLE'
           ? 'TBL-CST-'
           : selectedCategory === 'UTILITY'
@@ -299,8 +299,8 @@ export default function MachinesPage() {
       finalSpecs = customSpecs.trim() || 'Custom factory specification';
       const customId = `CUSTOM_${selectedCategory}_${Date.now()}`;
       const prefix =
-        selectedCategory === 'CHAIR'
-          ? 'CHR-CST-'
+        selectedCategory === 'VEHICLE'
+          ? 'VEH-CST-'
           : selectedCategory === 'TABLE'
           ? 'TBL-CST-'
           : selectedCategory === 'UTILITY'
@@ -498,11 +498,11 @@ export default function MachinesPage() {
 
   // Counts by category
   const categoryCounts = useMemo(() => {
-    const counts = { ALL: machines.length, MACHINE: 0, TABLE: 0, CHAIR: 0, UTILITY: 0 };
+    const counts = { ALL: machines.length, MACHINE: 0, TABLE: 0, VEHICLE: 0, UTILITY: 0 };
     machines.forEach((m) => {
       const cat = m.category || getAssetCategoryForType(m.type);
       if (cat === 'TABLE') counts.TABLE++;
-      else if (cat === 'CHAIR') counts.CHAIR++;
+      else if (cat === 'VEHICLE') counts.VEHICLE++;
       else if (cat === 'UTILITY' || cat === 'LIGHT' || cat === 'FAN') counts.UTILITY++;
       else counts.MACHINE++;
     });
@@ -593,8 +593,8 @@ export default function MachinesPage() {
                         {cat.id === 'TABLE' && (
                           <LayoutGrid className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-emerald-600'}`} />
                         )}
-                        {cat.id === 'CHAIR' && (
-                          <Armchair className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-purple-600'}`} />
+                        {cat.id === 'VEHICLE' && (
+                          <Truck className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-purple-600'}`} />
                         )}
                         {cat.id === 'UTILITY' && (
                           <Zap className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-cyan-600'}`} />
@@ -674,7 +674,7 @@ export default function MachinesPage() {
                   <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2">
                     <div>
                       <label className="block text-[10px] font-bold uppercase text-indigo-900 mb-0.5">
-                        New Variety / Chair Model Name *
+                        New Variety / Model Name *
                       </label>
                       <input
                         type="text"
@@ -682,8 +682,8 @@ export default function MachinesPage() {
                         value={customTypeName}
                         onChange={(e) => setCustomTypeName(e.target.value)}
                         placeholder={
-                          selectedCategory === 'CHAIR'
-                            ? 'e.g. Drafting Stool with Foot Ring'
+                          selectedCategory === 'VEHICLE'
+                            ? 'e.g. Electric 3-wheel forklift'
                             : selectedCategory === 'TABLE'
                             ? 'e.g. Fabric Layout & Spreading Bench'
                             : selectedCategory === 'UTILITY'
@@ -1150,16 +1150,16 @@ export default function MachinesPage() {
           </button>
           <button
             type="button"
-            onClick={() => setFilterCategory('CHAIR')}
+            onClick={() => setFilterCategory('VEHICLE')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-              filterCategory === 'CHAIR'
+              filterCategory === 'VEHICLE'
                 ? 'bg-purple-600 text-white shadow-xs'
                 : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
             }`}
           >
-            <Armchair className="w-3 h-3" />
-            <span>Chairs &amp; Seating</span>
-            <span className="text-[10px] opacity-75 font-mono">({categoryCounts.CHAIR})</span>
+            <Truck className="w-3 h-3" />
+            <span>Vehicles</span>
+            <span className="text-[10px] opacity-75 font-mono">({categoryCounts.VEHICLE})</span>
           </button>
           <button
             type="button"
@@ -1209,7 +1209,7 @@ export default function MachinesPage() {
                         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                           cat === 'TABLE'
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : cat === 'CHAIR'
+                            : cat === 'VEHICLE'
                             ? 'bg-purple-50 text-purple-700 border-purple-200'
                             : cat === 'UTILITY' || cat === 'LIGHT' || cat === 'FAN'
                             ? 'bg-cyan-50 text-cyan-700 border-cyan-200'
@@ -1217,7 +1217,7 @@ export default function MachinesPage() {
                         }`}
                       >
                         {cat === 'TABLE' && <LayoutGrid className="w-2.5 h-2.5" />}
-                        {cat === 'CHAIR' && <Armchair className="w-2.5 h-2.5" />}
+                        {cat === 'VEHICLE' && <Truck className="w-2.5 h-2.5" />}
                         {(cat === 'UTILITY' || cat === 'LIGHT' || cat === 'FAN') && (
                           <Zap className="w-2.5 h-2.5" />
                         )}

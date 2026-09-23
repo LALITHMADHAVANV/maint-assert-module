@@ -5,7 +5,7 @@ import {
   X,
   Wrench,
   LayoutGrid,
-  Armchair,
+  Truck,
   Lightbulb,
   Fan,
   Flame,
@@ -65,11 +65,11 @@ export function getCategoryStyle(category?: AssetCategory, asset?: Machine): Cat
         dot: 'bg-amber-500',
         activeBtn: 'bg-amber-600 text-white shadow-xs',
       };
-    case 'CHAIR':
+    case 'VEHICLE':
       return {
-        label: 'Ergonomic Chair',
-        plural: 'Chairs & Seating',
-        icon: Armchair,
+        label: 'Transport Vehicle',
+        plural: 'Vehicles & Transport',
+        icon: Truck,
         color: 'text-teal-800 bg-teal-50',
         badge: 'bg-teal-100 text-teal-800 border-teal-300',
         border: 'border-teal-200',
@@ -170,14 +170,14 @@ function getAssetCategorySpecs(asset: Machine): Record<string, string> {
         'Drawer Unit': 'Lockable steel slide drawer for tools and shears',
         'Air Flotation Option': asset.model?.includes('Air') || asset.specs?.includes('Air') ? 'Integrated blower bed with perforated stainless nozzle' : 'Passive high-glide laminate',
       };
-    case 'CHAIR':
+    case 'VEHICLE':
       return {
-        'Height Adjustment': 'Class 4 Pneumatic gas-lift cylinder (42 cm to 56 cm)',
-        'Lumbar Support': 'Ergonomic contour with height & tilt lock mechanism',
-        'Seat Cushion': 'High-density molded polyurethane foam (55 kg/m³)',
-        'Casters & Base': '5-star reinforced nylon base with twin-wheel friction casters',
-        'Swivel Range': '360° continuous rotation with ball-bearing hub',
-        'Ergonomic Compliance': 'EN 1335-1 / OSHA Apparel Floor Ergonomics Standard',
+        'Battery / Power': '24V / 36V Industrial Traction Battery',
+        'Load Capacity': '1.5 to 2.5 Tons dependent on fork class',
+        'Tire Specification': 'Solid non-marking polyurethane warehouse tires',
+        'Lift Mechanism': 'Triplex full-free-lift mast with side shift',
+        'Safety Features': 'Amber strobe beacon, reverse chime, operator presence sensor',
+        'Ergonomic Compliance': 'OSHA Material Handling Standard',
       };
     case 'LIGHT':
       return {
@@ -297,11 +297,11 @@ function getCategorySOP(category?: AssetCategory, asset?: Machine): string[] {
         'Wipe the laminated cutting surface daily using approved anti-static microfiber cloth.',
         'Ensure table levelers are securely locked to the concrete floor to prevent operational vibration.',
       ];
-    case 'CHAIR':
+    case 'VEHICLE':
       return [
-        'Adjust the pneumatic chair height so your knees form a 90° angle with feet flat on the floor or treadle.',
-        'Always set lumbar support firmly against the lower back before beginning extended sewing shifts.',
-        'Never stand on swivel chairs or use them as a stepping ladder to retrieve garment rolls.',
+        'Perform daily pre-shift inspection: check brakes, horn, and warning lights.',
+        'Always drive at walking speed and sound horn at intersections and blind corners.',
+        'Ensure load is centered on forks and tilted back before transport.',
       ];
     case 'LIGHT':
       return [
@@ -379,11 +379,11 @@ function getCategoryChecklist(category?: AssetCategory, asset?: Machine): string
         'Weekly: Check frame bolt tightness and inspect caster wheel locks on movable inspection beds.',
         'Monthly: Calibrate levelness using spirit level; vacuum lint buildup under table drawer slides.',
       ];
-    case 'CHAIR':
+    case 'VEHICLE':
       return [
-        'Daily: Check pneumatic gas lift height retention under operator load.',
-        'Weekly: Remove thread fluff and lint tangled in 5-star swivel wheel casters.',
-        'Monthly: Tighten backrest bracket screws; inspect molded foam seat integrity.',
+        'Daily: Check battery water levels, inspect tires, and verify brake function.',
+        'Weekly: Clean battery terminals and inspect lifting chain lubrication.',
+        'Monthly: Perform full hydraulic load test and inspect mast rollers.',
       ];
     case 'LIGHT':
       return [
@@ -749,18 +749,18 @@ export function AssetModal({
             <button
               type="button"
               onClick={() => {
-                setActiveCategory('CHAIR');
-                const first = allAssets.find((m) => m.category === 'CHAIR');
+                setActiveCategory('VEHICLE');
+                const first = allAssets.find((m) => m.category === 'VEHICLE');
                 if (first) setSelectedAssetId(first.id);
               }}
               className={`px-2.5 py-1.5 rounded-xl border transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                activeCategory === 'CHAIR'
+                activeCategory === 'VEHICLE'
                   ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
                   : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
               }`}
             >
-              <Armchair className="w-3.5 h-3.5" />
-              <span>Chairs</span>
+              <Truck className="w-3.5 h-3.5" />
+              <span>Vehicles</span>
             </button>
 
             <button

@@ -19,7 +19,7 @@ import {
   Wrench,
   Lightbulb,
   Fan,
-  Armchair,
+  Truck,
   LayoutGrid,
   SlidersHorizontal,
   RefreshCw,
@@ -193,11 +193,11 @@ export function getCategoryMeta(category?: AssetCategory, asset?: Machine) {
         badge: 'bg-amber-50 text-amber-800 border-amber-200',
         dot: 'bg-amber-500',
       };
-    case 'CHAIR':
+    case 'VEHICLE':
       return {
-        label: 'Ergonomic Chair',
-        plural: 'Chairs & Seating',
-        icon: Armchair,
+        label: 'Transport Vehicle',
+        plural: 'Vehicles & Transport',
+        icon: Truck,
         color: 'text-teal-700 bg-teal-50/80 border-teal-200/60',
         badge: 'bg-teal-50 text-teal-800 border-teal-200',
         dot: 'bg-teal-500',
@@ -359,7 +359,7 @@ export default function FloorTrackerPage() {
           setModalInitialCategory(fCat === 'LIGHT' || fCat === 'FAN' ? 'UTILITY' : fCat);
           setIsAssetModalOpen(true);
         }
-      } else if (catParam && ['MACHINE', 'TABLE', 'CHAIR', 'LIGHT', 'FAN', 'UTILITY'].includes(catParam)) {
+      } else if (catParam && ['MACHINE', 'TABLE', 'VEHICLE', 'LIGHT', 'FAN', 'UTILITY'].includes(catParam)) {
         const targetCat = catParam === 'LIGHT' || catParam === 'FAN' ? 'UTILITY' : catParam;
         const firstInCat = machines.find((m) => {
           const mCat = m.category || 'MACHINE';
@@ -409,7 +409,7 @@ export default function FloorTrackerPage() {
     const counts: Record<AssetCategory, number> = {
       MACHINE: 0,
       TABLE: 0,
-      CHAIR: 0,
+      VEHICLE: 0,
       LIGHT: 0,
       FAN: 0,
       UTILITY: 0,
@@ -426,7 +426,7 @@ export default function FloorTrackerPage() {
     const vals: Record<AssetCategory, number> = {
       MACHINE: 0,
       TABLE: 0,
-      CHAIR: 0,
+      VEHICLE: 0,
       LIGHT: 0,
       FAN: 0,
       UTILITY: 0,
@@ -458,7 +458,7 @@ export default function FloorTrackerPage() {
         if (activeCategory === 'UTILITY') {
           if (cat !== 'UTILITY' && cat !== 'LIGHT' && cat !== 'FAN') return false;
         } else if (activeCategory === 'FURNITURE') {
-          if (cat !== 'TABLE' && cat !== 'CHAIR') return false;
+          if (cat !== 'TABLE' && cat !== 'VEHICLE') return false;
         } else if (cat !== activeCategory) {
           return false;
         }
@@ -509,7 +509,7 @@ export default function FloorTrackerPage() {
         line: FloorLine;
         station: string;
         table?: Machine;
-        chair?: Machine;
+        vehicle?: Machine;
         machine?: Machine;
         light?: Machine;
         fan?: Machine;
@@ -526,7 +526,7 @@ export default function FloorTrackerPage() {
       }
       const cat = m.category || 'MACHINE';
       if (cat === 'TABLE') map[key].table = m;
-      else if (cat === 'CHAIR') map[key].chair = m;
+      else if (cat === 'VEHICLE') map[key].vehicle = m;
       else if (
         cat === 'LIGHT' ||
         (cat === 'UTILITY' && (m.type?.startsWith('LIGHT') || m.id?.startsWith('LGT')))
@@ -597,16 +597,16 @@ export default function FloorTrackerPage() {
         setNewStation('Cutting Bay 01');
         setNewSpecs('Air flotation laminated top with metric measuring rule');
         break;
-      case 'CHAIR':
-        setNewCategory('CHAIR');
-        setNewId(`CHR-ERG-${rnd}`);
-        setNewBrand('Featherlite');
-        setNewModel('Optima-Sew360');
-        setNewCost(85);
-        setNewDepartment('Sewing Floor');
-        setNewLine('Line 01');
-        setNewStation('Station 04');
-        setNewSpecs('Ergonomic gas-lift pneumatic swivel chair with lumbar support');
+      case 'VEHICLE':
+        setNewCategory('VEHICLE');
+        setNewId(`VEH-FL-${rnd}`);
+        setNewBrand('Toyota');
+        setNewModel('8FBE15T');
+        setNewCost(850000);
+        setNewDepartment('Warehouse & Storage');
+        setNewLine('Warehouse & Storage');
+        setNewStation('Bay A');
+        setNewSpecs('Electric 3-wheel forklift, 1.5-ton capacity, 4m lift height');
         break;
       case 'UTILITY':
       case 'LIGHT':
@@ -686,7 +686,7 @@ export default function FloorTrackerPage() {
     const typeMapping: Record<AssetCategory, MachineType> = {
       MACHINE: 'OVERLOCK_4_THREAD',
       TABLE: 'TABLE_SEWING',
-      CHAIR: 'CHAIR_OPERATOR',
+      VEHICLE: 'VEHICLE_FORKLIFT',
       LIGHT: 'LIGHT_HIGHBAY',
       FAN: 'FAN_CEILING',
       UTILITY: 'UTILITY_BOILER',
@@ -965,18 +965,18 @@ export default function FloorTrackerPage() {
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">Furniture</span>
                 <div className="w-7 h-7 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition">
-                  <Armchair className="w-3.5 h-3.5" />
+                  <Truck className="w-3.5 h-3.5" />
                 </div>
               </div>
               <div className="text-2xl font-black text-slate-900 font-mono mt-1">
-                {(categoryCounts.TABLE || 0) + (categoryCounts.CHAIR || 0)}
+                {(categoryCounts.TABLE || 0) + (categoryCounts.VEHICLE || 0)}
               </div>
               <div className="text-xs font-semibold text-amber-600 font-mono">
-                ₹{((categoryValuations.TABLE || 0) + (categoryValuations.CHAIR || 0)).toLocaleString('en-IN')}
+                ₹{((categoryValuations.TABLE || 0) + (categoryValuations.VEHICLE || 0)).toLocaleString('en-IN')}
               </div>
             </div>
             <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-              <span>Work Tables & Seats</span>
+              <span>Work Tables & Vehicles</span>
               <span className="text-amber-600 font-bold group-hover:translate-x-0.5 transition flex items-center">
                 Specs <ChevronRight className="w-3 h-3" />
               </span>
@@ -1062,7 +1062,7 @@ export default function FloorTrackerPage() {
             >
               <option value="ALL">All Categories ({totalAssets})</option>
               <option value="MACHINE">Machinery ({categoryCounts.MACHINE || 0})</option>
-              <option value="FURNITURE">Furniture ({(categoryCounts.TABLE || 0) + (categoryCounts.CHAIR || 0)})</option>
+              <option value="FURNITURE">Furniture ({(categoryCounts.TABLE || 0) + (categoryCounts.VEHICLE || 0)})</option>
               <option value="UTILITY">Utilities & Facilities ({categoryCounts.UTILITY || 0})</option>
             </select>
             <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-3 text-slate-400 pointer-events-none" />
@@ -1395,7 +1395,7 @@ export default function FloorTrackerPage() {
               const hasBreakdown =
                 ws.table?.status === 'BREAKDOWN' ||
                 ws.machine?.status === 'BREAKDOWN' ||
-                ws.chair?.status === 'BREAKDOWN' ||
+                ws.vehicle?.status === 'BREAKDOWN' ||
                 ws.light?.status === 'BREAKDOWN' ||
                 ws.fan?.status === 'BREAKDOWN';
 
@@ -1483,27 +1483,27 @@ export default function FloorTrackerPage() {
                       </div>
                     </div>
 
-                    {/* 3. Chair Slot */}
+                    {/* 3. Vehicle Slot */}
                     <div
-                      onClick={() => ws.chair && handleOpenAssetModal(ws.chair)}
+                      onClick={() => ws.vehicle && handleOpenAssetModal(ws.vehicle)}
                       className={`p-2 rounded-xl border transition flex flex-col justify-between ${
-                        ws.chair
-                          ? ws.chair.status === 'BREAKDOWN'
+                        ws.vehicle
+                          ? ws.vehicle.status === 'BREAKDOWN'
                             ? 'bg-rose-50 border-rose-300 cursor-pointer'
                             : 'bg-teal-50/40 border-teal-200/70 hover:bg-teal-50 cursor-pointer'
                           : 'bg-slate-50 border-dashed border-slate-200 opacity-60'
                       }`}
-                      title={ws.chair ? 'Click to inspect Chair details & specifications' : undefined}
+                      title={ws.vehicle ? 'Click to inspect Vehicle details & specifications' : undefined}
                     >
                       <div className="flex items-center justify-between text-[10px] font-bold text-teal-800">
                         <span className="flex items-center gap-1">
-                          <Armchair className="w-3 h-3 text-teal-600" />
-                          <span>Seating</span>
+                          <Truck className="w-3 h-3 text-teal-600" />
+                          <span>Vehicle</span>
                         </span>
-                        <span className="font-mono text-[9px]">{ws.chair?.id || 'EMPTY'}</span>
+                        <span className="font-mono text-[9px]">{ws.vehicle?.id || 'EMPTY'}</span>
                       </div>
                       <div className="text-[9px] text-slate-500 truncate mt-1">
-                        {ws.chair ? ws.chair.brand : 'Operator Stool'}
+                        {ws.vehicle ? ws.vehicle.brand : 'Transport Cart'}
                       </div>
                     </div>
 
@@ -1605,7 +1605,7 @@ export default function FloorTrackerPage() {
                   {[
                     { id: 'MACHINE', label: 'Machinery', icon: Wrench },
                     { id: 'TABLE', label: 'Work Table', icon: LayoutGrid },
-                    { id: 'CHAIR', label: 'Chair / Seat', icon: Armchair },
+                    { id: 'VEHICLE', label: 'Vehicle', icon: Truck },
                     { id: 'UTILITY', label: 'Plant Utility', icon: Flame },
                   ].map((cat) => {
                     const CatIcon = cat.icon;
