@@ -139,7 +139,8 @@ export function subscribeMachines(callback: (machines: Machine[]) => void): () =
 
     fetchAndNotify();
 
-    const channel = supabase.channel('machines-changes')
+    const channelName = `machines-changes-${Math.random().toString(36).substring(2, 9)}`;
+    const channel = supabase.channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'machines' }, (payload) => {
         fetchAndNotify();
       })
@@ -307,7 +308,8 @@ export function subscribeParts(callback: (parts: SparePart[]) => void): () => vo
 
     fetchAndNotify();
 
-    const channel = supabase.channel('spare-parts-changes')
+    const channelName = `spare-parts-changes-${Math.random().toString(36).substring(2, 9)}`;
+    const channel = supabase.channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'spare_parts' }, (payload) => {
         fetchAndNotify();
       })
@@ -384,7 +386,8 @@ export function subscribeRepairs(callback: (repairs: RepairTicket[]) => void): (
 
     fetchAndNotify();
 
-    const channel = supabase.channel('repair-tickets-changes')
+    const channelName = `repair-tickets-changes-${Math.random().toString(36).substring(2, 9)}`;
+    const channel = supabase.channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'repair_tickets' }, (payload) => {
         fetchAndNotify();
       })
@@ -599,7 +602,8 @@ export function subscribePPMSchedules(callback: (schedules: PPMSchedule[]) => vo
 
     fetchAndNotify();
 
-    const channel = supabase.channel('ppm-schedules-changes')
+    const channelName = `ppm-schedules-changes-${Math.random().toString(36).substring(2, 9)}`;
+    const channel = supabase.channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ppm_schedules' }, (payload) => {
         fetchAndNotify();
       })
@@ -713,7 +717,8 @@ export function subscribeRequisitions(
 
     fetchAndNotify();
 
-    const channel = supabase.channel('requisitions-changes')
+    const channelName = `requisitions-changes-${Math.random().toString(36).substring(2, 9)}`;
+    const channel = supabase.channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'requisitions' }, (payload) => {
         fetchAndNotify();
       })
