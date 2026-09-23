@@ -146,7 +146,7 @@ export default function UserManagementPage() {
         throw new Error(data.error || 'Failed to create user');
       }
 
-      showToast(`User ${newName} successfully created in Firebase Auth & Firestore!`, 'success');
+      showToast(`User ${newName} successfully created in Supabase Auth & DB!`, 'success');
       setIsAddUserModalOpen(false);
 
       // Reset form
@@ -279,7 +279,7 @@ export default function UserManagementPage() {
               <span>Plant Administrator Desk</span>
             </span>
             <span className="text-xs text-indigo-300 font-mono">
-              Live Firebase Authentication &amp; RBAC
+              Live Supabase Authentication &amp; RBAC
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight flex items-center gap-2.5">
@@ -486,7 +486,7 @@ export default function UserManagementPage() {
                             setModalNewPassword(u.defaultPassword || 'sewing123');
                           }}
                           className="px-2.5 py-1 text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition inline-flex items-center gap-1"
-                          title="Reset / Set Password in Firebase Auth"
+                          title="Reset / Set Password in Supabase Auth"
                         >
                           <KeyRound className="w-3 h-3 text-slate-500" />
                           <span>Password</span>
@@ -538,7 +538,7 @@ export default function UserManagementPage() {
                 <div>
                   <h3 className="font-extrabold text-sm sm:text-base">Register New Factory User</h3>
                   <p className="text-xs text-indigo-200/80">
-                    Provisions account in Firebase Authentication &amp; Cloud Firestore
+                    Provisions account in Supabase Authentication &amp; PostgreSQL Database
                   </p>
                 </div>
               </div>
@@ -690,7 +690,7 @@ export default function UserManagementPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-semibold text-slate-700">
-                    Initial Password in Firebase Auth *
+                    Initial Password in Supabase Auth *
                   </label>
                   <button
                     type="button"
@@ -784,7 +784,7 @@ export default function UserManagementPage() {
                   placeholder="Enter at least 6 characters"
                 />
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Directly writes new password into Firebase Authentication.
+                  Directly writes new password into Supabase Authentication.
                 </span>
               </div>
 

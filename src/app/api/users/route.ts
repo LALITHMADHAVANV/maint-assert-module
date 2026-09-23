@@ -1,30 +1,29 @@
 import { NextResponse } from 'next/server';
-import { initializeApp, getApps } from 'firebase/app';
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  updateProfile,
-  updatePassword,
-} from 'firebase/auth';
-import { getFirestore, collection, doc, getDocs, setDoc } from 'firebase/firestore';
+import { createClient } from '@supabase/supabase-js';
 import { SEED_USERS } from '@/lib/seedData';
 import { UserProfile, UserRole } from '@/types/cmms';
+import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyBerHuo4pX5vCdn3qJbR6RWOLpf42WBjRc',
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'maintenance-module-9c497.firebaseapp.com',
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'maintenance-module-9c497',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'maintenance-module-9c497.firebasestorage.app',
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '420649959262',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:420649959262:web:9849e8e7d072cd372c99cf',
-};
+// Helper to get Supabase Admin client
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  if (!url || !serviceKey) {
+    throw new Error('Supabase URL or Service Role Key is missing in environment variables');
+  }
+  return createClient(url, serviceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    }
+  });
+}
 
-function getFirebase() {
-  const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-  return { app, auth, db };
+// Helper to get Supabase Anon client for public data fetching if admin not available
+function getSupabaseAnon() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  return createClient(url, anonKey);
 }
 
 function getDefaultTitle(role: UserRole): string {
@@ -40,36 +39,35 @@ function getDefaultTitle(role: UserRole): string {
       return 'Industrial Sewing Machine Mechanic';
     case 'STORE_PERSON':
       return 'Tool Crib & Inventory Custodian';
+    default:
+      return 'Factory Staff';
   }
 }
 
-// GET /api/users - Fetch all factory users from Firestore and Seed data
+// GET /api/users - Fetch all factory users from Supabase and Seed data
 export async function GET() {
   try {
-    const { db } = getFirebase();
-    const usersCollection = collection(db, 'users');
-    const snapshot = await getDocs(usersCollection);
+    const supabase = getSupabaseAnon();
+    const { data: dbUsers, error } = await supabase.from('users').select('*');
 
-    const firestoreUsers: UserProfile[] = [];
-    snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      firestoreUsers.push({
-        uid: data.uid || docSnap.id,
-        name: data.name || 'Factory Staff',
-        email: data.email || '',
-        role: (data.role || 'MECHANIC') as UserRole,
-        title: data.title || getDefaultTitle(data.role || 'MECHANIC'),
-        phone: data.phone || '',
-        department: data.department || 'Floor Maintenance',
-        employeeId: data.employeeId || `EMP-${docSnap.id.slice(0, 4)}`,
-        status: data.status || 'ACTIVE',
-        defaultPassword: data.defaultPassword,
-        createdAt: data.createdAt,
-        updatedAt: data.updatedAt,
-      });
-    });
+    if (error) throw error;
 
-    // Merge seed users if not already in firestore
+    const fetchedUsers: UserProfile[] = (dbUsers || []).map((data: any) => ({
+      uid: data.uid || data.id,
+      name: data.name || 'Factory Staff',
+      email: data.email || '',
+      role: (data.role || 'MECHANIC') as UserRole,
+      title: data.title || getDefaultTitle(data.role as UserRole || 'MECHANIC'),
+      phone: data.phone || '',
+      department: data.department || 'Floor Maintenance',
+      employeeId: data.employee_id || `EMP-${(data.id || '').slice(0, 4)}`,
+      status: data.status || 'ACTIVE',
+      defaultPassword: data.default_password,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    }));
+
+    // Merge seed users if not already in DB
     const allUsersMap = new Map<string, UserProfile>();
 
     // Add seed users first
@@ -83,8 +81,8 @@ export async function GET() {
       });
     });
 
-    // Merge Firestore users
-    firestoreUsers.forEach((fu) => {
+    // Merge DB users
+    fetchedUsers.forEach((fu) => {
       allUsersMap.set(fu.email.toLowerCase(), fu);
     });
 
@@ -103,7 +101,7 @@ export async function GET() {
   }
 }
 
-// POST /api/users - Create new user in Firebase Auth and Firestore
+// POST /api/users - Create new user in Supabase Auth and public.users
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -130,7 +128,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { auth, db } = getFirebase();
+    const supabaseAdmin = getSupabaseAdmin();
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass = password.trim();
     const cleanRole: UserRole = role;
@@ -139,73 +137,65 @@ export async function POST(req: Request) {
 
     let uid = '';
 
-    // 1. Try creating user in Firebase Auth
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPass);
-      uid = cred.user.uid;
-      await updateProfile(cred.user, { displayName: name.trim() });
-    } catch (createErr: unknown) {
-      const fbErr = createErr as { code?: string; message?: string };
-      // If user already exists in Firebase Auth, attempt to authenticate and update password
-      if (fbErr.code === 'auth/email-already-in-use') {
-        const candidatePasswords = [
-          cleanPass,
-          'sewing123',
-          'admin123',
-          'senior123',
-          'mechanic123',
-          'stores123',
-          'ceo123',
-        ];
-        let signedInCred = null;
-        for (const pwd of candidatePasswords) {
-          try {
-            signedInCred = await signInWithEmailAndPassword(auth, cleanEmail, pwd);
-            break;
-          } catch {
-            // try next
-          }
-        }
+    // 1. Try creating user in Supabase Auth via Admin API
+    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: cleanEmail,
+      password: cleanPass,
+      email_confirm: true,
+    });
 
-        if (signedInCred) {
-          uid = signedInCred.user.uid;
-          await updatePassword(signedInCred.user, cleanPass);
-          await updateProfile(signedInCred.user, { displayName: name.trim() });
+    if (createError) {
+      // If user already exists in Supabase Auth, attempt to find them and update
+      if (createError.message.includes('already registered')) {
+        const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+        const existing = existingUsers.users.find(u => u.email === cleanEmail);
+        
+        if (existing) {
+          uid = existing.id;
+          await supabaseAdmin.auth.admin.updateUserById(uid, { password: cleanPass });
         } else {
-          // Generate a surrogate UID if already registered but password unknown
-          uid = `USR-${Math.floor(100000 + Math.random() * 900000)}`;
+          return NextResponse.json(
+            { error: 'User email already registered but could not be located.' },
+            { status: 400 }
+          );
         }
       } else {
         return NextResponse.json(
-          { error: fbErr.message || 'Failed to create user in Firebase Auth' },
+          { error: createError.message || 'Failed to create user in Supabase Auth' },
           { status: 400 }
         );
       }
+    } else if (newUser?.user) {
+      uid = newUser.user.id;
+    } else {
+       return NextResponse.json(
+          { error: 'Unknown error occurred while creating user.' },
+          { status: 500 }
+       );
     }
 
-    // 2. Write full user profile to Firestore
-    const userProfile: UserProfile = {
+    // 2. Write full user profile to Supabase public.users
+    const userPayload = {
+      id: uid,
       uid,
       name: name.trim(),
       email: cleanEmail,
       role: cleanRole,
       title: finalTitle,
-      phone: phone?.trim() || '',
-      department: department?.trim() || 'Floor Maintenance',
-      employeeId: finalEmpId,
-      status: 'ACTIVE',
-      defaultPassword: cleanPass,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     };
 
-    const userDocRef = doc(db, 'users', uid);
-    await setDoc(userDocRef, userProfile, { merge: true });
+    const { error: dbError } = await supabaseAdmin
+      .from('users')
+      .upsert(userPayload);
+
+    if (dbError) {
+       console.error("Database insert error:", dbError);
+    }
 
     return NextResponse.json({
       success: true,
       message: `User ${name} (${cleanEmail}) successfully created with role ${cleanRole}!`,
-      user: userProfile,
+      user: userPayload,
     });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);

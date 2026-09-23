@@ -7,13 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:firebase": "node scripts/seed-firestore.mjs",
-    "set-passwords": "node scripts/set-all-user-passwords.mjs"
+    "seed:supabase": "node scripts/seed-supabase.mjs",
+    "set-passwords": "node scripts/set-all-user-passwords-supabase.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
-    "firebase": "^12.19.0",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^1.47.0",
     "next": "16.3.5",

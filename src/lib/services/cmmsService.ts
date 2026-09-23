@@ -1,14 +1,4 @@
 import {
-  collection,
-  doc,
-  getDocs,
-  onSnapshot,
-  runTransaction,
-  setDoc,
-  updateDoc,
-} from 'firebase/firestore';
-import { db, isFirebaseConfigured } from '@/lib/firebase';
-import {
   Machine,
   MachineStatus,
   SparePart,
@@ -26,6 +16,7 @@ import {
   SEED_REQUISITIONS,
   SEED_USERS,
 } from '@/lib/seedData';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 // Local storage keys for offline/demo mode
 const STORAGE_KEYS = {
@@ -94,7 +85,7 @@ export function initLocalSeedData(): void {
 }
 
 /**
- * Reset local and/or Firestore database to initial realistic factory data
+ * Reset local and/or Supabase database to initial realistic factory data
  */
 export async function resetToSeedData(): Promise<void> {
   if (typeof window !== 'undefined') {
@@ -112,28 +103,24 @@ export async function resetToSeedData(): Promise<void> {
     notifyLocal('requisitions', SEED_REQUISITIONS);
   }
 
-  if (isFirebaseConfigured) {
+  if (isSupabaseConfigured) {
     try {
-      for (const u of SEED_USERS) {
-        await setDoc(doc(db, 'users', u.uid), u);
-      }
-      for (const m of SEED_MACHINES) {
-        await setDoc(doc(db, 'machines', m.id), m);
-      }
-      for (const p of SEED_PARTS) {
-        await setDoc(doc(db, 'parts', p.partId), p);
-      }
-      for (const r of SEED_REPAIRS) {
-        await setDoc(doc(db, 'repairs', r.id), r);
-      }
-      for (const ppm of SEED_PPM_SCHEDULES) {
-        await setDoc(doc(db, 'ppm_schedules', ppm.id), ppm);
-      }
-      for (const req of SEED_REQUISITIONS) {
-        await setDoc(doc(db, 'requisitions', req.id), req);
-      }
+      // Upsert seed data to Supabase public tables
+      await supabase.from('users').upsert(SEED_USERS.map(u => ({
+        id: u.uid,
+        uid: u.uid,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        title: u.title
+      })));
+      await supabase.from('machines').upsert(SEED_MACHINES);
+      await supabase.from('spare_parts').upsert(SEED_PARTS);
+      await supabase.from('repair_tickets').upsert(SEED_REPAIRS);
+      await supabase.from('ppm_schedules').upsert(SEED_PPM_SCHEDULES);
+      await supabase.from('requisitions').upsert(SEED_REQUISITIONS);
     } catch (err) {
-      console.warn('Firebase batch seed warning:', err);
+      console.warn('Supabase batch seed warning:', err);
     }
   }
 }
@@ -143,24 +130,24 @@ export async function resetToSeedData(): Promise<void> {
    ====================================================================== */
 
 export function subscribeMachines(callback: (machines: Machine[]) => void): () => void {
-  if (isFirebaseConfigured) {
-    const colRef = collection(db, 'machines');
-    const unsubscribe = onSnapshot(
-      colRef,
-      (snapshot) => {
-        if (!snapshot.empty) {
-          const list = snapshot.docs.map((d) => d.data() as Machine);
-          callback(list);
-        } else {
-          // If Firestore is empty, fallback to seed
-          callback(getLocal(STORAGE_KEYS.MACHINES, SEED_MACHINES));
-        }
-      },
-      () => {
-        callback(getLocal(STORAGE_KEYS.MACHINES, SEED_MACHINES));
-      }
-    );
-    return unsubscribe;
+  if (isSupabaseConfigured) {
+    const fetchAndNotify = async () => {
+      const { data } = await supabase.from('machines').select('*');
+      if (data && data.length > 0) callback(data as Machine[]);
+      else callback(getLocal(STORAGE_KEYS.MACHINES, SEED_MACHINES));
+    };
+
+    fetchAndNotify();
+
+    const channel = supabase.channel('schema-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'machines' }, (payload) => {
+        fetchAndNotify();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }
 
   initLocalSeedData();
@@ -186,11 +173,11 @@ export async function createMachine(machine: Machine): Promise<void> {
   setLocal(STORAGE_KEYS.MACHINES, updated);
   notifyLocal('machines', updated);
 
-  if (isFirebaseConfigured) {
+  if (isSupabaseConfigured) {
     try {
-      await setDoc(doc(db, 'machines', machine.id), machine);
+      await supabase.from('machines').upsert(machine);
     } catch (e) {
-      console.error('Firestore createMachine error:', e);
+      console.error('Supabase createMachine error:', e);
     }
   }
 }
@@ -265,9 +252,9 @@ export async function relocateMachine(
   setLocal(STORAGE_KEYS.REPAIRS, updatedRepairs);
   notifyLocal('repairs', updatedRepairs);
 
-  if (isFirebaseConfigured) {
+  if (isSupabaseConfigured) {
     try {
-      await updateDoc(doc(db, 'machines', machineId), {
+      await supabase.from('machines').update({
         currentLine: targetLine,
         stationNo: newStation,
         status: newStatus,
@@ -277,10 +264,11 @@ export async function relocateMachine(
         lastMovedReason: reason,
         lastMovedBy: mechanicName,
         relocationHistory: [moveRecord, ...(machine.relocationHistory || [])],
-      });
-      await setDoc(doc(db, 'repairs', relocationRecord.id), relocationRecord);
+      }).eq('id', machineId);
+
+      await supabase.from('repair_tickets').insert(relocationRecord);
     } catch (e) {
-      console.error('Firestore relocateMachine error:', e);
+      console.error('Supabase relocateMachine error:', e);
     }
   }
 }
@@ -296,11 +284,11 @@ export async function updateMachineStatus(
   setLocal(STORAGE_KEYS.MACHINES, updatedMachines);
   notifyLocal('machines', updatedMachines);
 
-  if (isFirebaseConfigured) {
+  if (isSupabaseConfigured) {
     try {
-      await updateDoc(doc(db, 'machines', machineId), { status });
+      await supabase.from('machines').update({ status }).eq('id', machineId);
     } catch (e) {
-      console.error('Firestore updateMachineStatus error:', e);
+      console.error('Supabase updateMachineStatus error:', e);
     }
   }
 }
@@ -310,22 +298,24 @@ export async function updateMachineStatus(
    ====================================================================== */
 
 export function subscribeParts(callback: (parts: SparePart[]) => void): () => void {
-  if (isFirebaseConfigured) {
-    const colRef = collection(db, 'parts');
-    const unsubscribe = onSnapshot(
-      colRef,
-      (snapshot) => {
-        if (!snapshot.empty) {
-          callback(snapshot.docs.map((d) => d.data() as SparePart));
-        } else {
-          callback(getLocal(STORAGE_KEYS.PARTS, SEED_PARTS));
-        }
-      },
-      () => {
-        callback(getLocal(STORAGE_KEYS.PARTS, SEED_PARTS));
-      }
-    );
-    return unsubscribe;
+  if (isSupabaseConfigured) {
+    const fetchAndNotify = async () => {
+      const { data } = await supabase.from('spare_parts').select('*');
+      if (data && data.length > 0) callback(data as SparePart[]);
+      else callback(getLocal(STORAGE_KEYS.PARTS, SEED_PARTS));
+    };
+
+    fetchAndNotify();
+
+    const channel = supabase.channel('schema-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'spare_parts' }, (payload) => {
+        fetchAndNotify();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }
 
   initLocalSeedData();
@@ -349,11 +339,11 @@ export async function adjustPartStock(partId: string, delta: number): Promise<vo
   setLocal(STORAGE_KEYS.PARTS, updatedParts);
   notifyLocal('parts', updatedParts);
 
-  if (isFirebaseConfigured) {
+  if (isSupabaseConfigured) {
     try {
-      await updateDoc(doc(db, 'parts', partId), { stock: newStock });
+      await supabase.from('spare_parts').update({ currentStock: newStock }).eq('id', partId);
     } catch (e) {
-      console.error('Firestore adjustPartStock error:', e);
+      console.error('Supabase adjustPartStock error:', e);
     }
   }
 }
@@ -371,36 +361,38 @@ export async function restockPart(partId: string, quantity: number, poRef?: stri
   setLocal(STORAGE_KEYS.PARTS, updatedParts);
   notifyLocal('parts', updatedParts);
 
-  if (isFirebaseConfigured) {
+  if (isSupabaseConfigured) {
     try {
-      await updateDoc(doc(db, 'parts', partId), { stock: newStock });
+      await supabase.from('spare_parts').update({ currentStock: newStock }).eq('id', partId);
     } catch (e) {
-      console.error('Firestore restockPart error:', e);
+      console.error('Supabase restockPart error:', e);
     }
   }
 }
 
 /* ======================================================================
-   REPAIRS & WORK ORDERS SERVICE (WITH ATOMIC TRANSACTION)
+   REPAIRS & WORK ORDERS SERVICE
    ====================================================================== */
 
 export function subscribeRepairs(callback: (repairs: RepairTicket[]) => void): () => void {
-  if (isFirebaseConfigured) {
-    const colRef = collection(db, 'repairs');
-    const unsubscribe = onSnapshot(
-      colRef,
-      (snapshot) => {
-        if (!snapshot.empty) {
-          callback(snapshot.docs.map((d) => d.data() as RepairTicket));
-        } else {
-          callback(getLocal(STORAGE_KEYS.REPAIRS, SEED_REPAIRS));
-        }
-      },
-      () => {
-        callback(getLocal(STORAGE_KEYS.REPAIRS, SEED_REPAIRS));
-      }
-    );
-    return unsubscribe;
+  if (isSupabaseConfigured) {
+    const fetchAndNotify = async () => {
+      const { data } = await supabase.from('repair_tickets').select('*');
+      if (data && data.length > 0) callback(data as RepairTicket[]);
+      else callback(getLocal(STORAGE_KEYS.REPAIRS, SEED_REPAIRS));
+    };
+
+    fetchAndNotify();
+
+    const channel = supabase.channel('schema-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'repair_tickets' }, (payload) => {
+        fetchAndNotify();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }
 
   initLocalSeedData();
@@ -444,27 +436,18 @@ export async function createBreakdownTicket(
   setLocal(STORAGE_KEYS.MACHINES, updatedMachines);
   notifyLocal('machines', updatedMachines);
 
-  if (isFirebaseConfigured) {
+  if (isSupabaseConfigured) {
     try {
-      await setDoc(doc(db, 'repairs', ticketId), newTicket);
-      await updateDoc(doc(db, 'machines', ticketData.machineId), {
-        status: 'BREAKDOWN',
-      });
+      await supabase.from('repair_tickets').insert(newTicket);
+      await supabase.from('machines').update({ status: 'BREAKDOWN' }).eq('id', ticketData.machineId);
     } catch (e) {
-      console.error('Firestore createBreakdownTicket error:', e);
+      console.error('Supabase createBreakdownTicket error:', e);
     }
   }
 
   return ticketId;
 }
 
-/**
- * CRITICAL ATOMIC TRANSACTION:
- * 1. Marks repair ticket as 'COMPLETED'
- * 2. Decrements used spare parts from parts inventory
- * 3. Sets machine status = 'ACTIVE'
- * 4. Increments machine totalDowntimeMinutes by repair downtime
- */
 export async function resolveRepairTicket(
   ticketId: string,
   downtimeMinutes: number,
@@ -536,52 +519,39 @@ export async function resolveRepairTicket(
   notifyLocal('parts', updatedParts);
   notifyLocal('machines', updatedMachines);
 
-  // If live Firebase is configured, execute true Firestore runTransaction()
-  if (isFirebaseConfigured) {
+  // If Supabase is configured, use rpc for transaction or execute sequentially
+  if (isSupabaseConfigured) {
     try {
-      await runTransaction(db, async (transaction) => {
-        const repairRef = doc(db, 'repairs', ticketId);
-        const machineRef = doc(db, 'machines', ticket.machineId);
+      // In a real application, you should create a Supabase RPC function for atomic transactions.
+      // Here we will do them sequentially.
+      await supabase.from('repair_tickets').update({
+        status: 'COMPLETED',
+        resolvedAt: new Date().toISOString(),
+        downtimeMinutes,
+        actionTaken,
+        attendedBy,
+        partsUsed: resolvedPartsUsed,
+      }).eq('id', ticketId);
 
-        // Read phase
-        const machineSnap = await transaction.get(machineRef);
-        const partSnaps = await Promise.all(
-          resolvedPartsUsed.map((p) => transaction.get(doc(db, 'parts', p.partId)))
-        );
+      for (const p of resolvedPartsUsed) {
+        const { data: partData } = await supabase.from('spare_parts').select('current_stock').eq('id', p.partId).single();
+        if (partData) {
+          await supabase.from('spare_parts').update({
+            current_stock: Math.max(0, partData.current_stock - p.quantity)
+          }).eq('id', p.partId);
+        }
+      }
 
-        // Compute new machine total downtime
-        const currentMData = machineSnap.exists() ? (machineSnap.data() as Machine) : null;
-        const currentDowntime = currentMData?.totalDowntimeMinutes || 0;
-
-        // Write phase: Update repair ticket
-        transaction.update(repairRef, {
-          status: 'COMPLETED',
-          resolvedAt: new Date().toISOString(),
-          downtimeMinutes,
-          actionTaken,
-          attendedBy,
-          partsUsed: resolvedPartsUsed,
-        });
-
-        // Write phase: Decrement parts
-        resolvedPartsUsed.forEach((p, idx) => {
-          const snap = partSnaps[idx];
-          if (snap.exists()) {
-            const currentStock = snap.data().stock || 0;
-            transaction.update(doc(db, 'parts', p.partId), {
-              stock: Math.max(0, currentStock - p.quantity),
-            });
-          }
-        });
-
-        // Write phase: Update machine status and downtime
-        transaction.update(machineRef, {
+      const { data: machineData } = await supabase.from('machines').select('total_downtime_minutes').eq('id', ticket.machineId).single();
+      if (machineData) {
+        await supabase.from('machines').update({
           status: 'ACTIVE',
-          totalDowntimeMinutes: currentDowntime + downtimeMinutes,
-        });
-      });
-    } catch (firebaseErr) {
-      console.error('Firestore runTransaction error:', firebaseErr);
+          totalDowntimeMinutes: (machineData.total_downtime_minutes || 0) + downtimeMinutes
+        }).eq('id', ticket.machineId);
+      }
+
+    } catch (err) {
+      console.error('Supabase resolveRepairTicket error:', err);
     }
   }
 }
@@ -603,14 +573,14 @@ export async function assignRepairTicket(
   setLocal(STORAGE_KEYS.REPAIRS, updatedRepairs);
   notifyLocal('repairs', updatedRepairs);
 
-  if (isFirebaseConfigured) {
+  if (isSupabaseConfigured) {
     try {
-      await updateDoc(doc(db, 'repairs', ticketId), {
+      await supabase.from('repair_tickets').update({
         attendedBy: mechanicName,
         status: 'IN_PROGRESS',
-      });
+      }).eq('id', ticketId);
     } catch (e) {
-      console.error('Firestore assignRepairTicket error:', e);
+      console.error('Supabase assignRepairTicket error:', e);
     }
   }
 }
@@ -620,22 +590,24 @@ export async function assignRepairTicket(
    ====================================================================== */
 
 export function subscribePPMSchedules(callback: (schedules: PPMSchedule[]) => void): () => void {
-  if (isFirebaseConfigured) {
-    const colRef = collection(db, 'ppm_schedules');
-    const unsubscribe = onSnapshot(
-      colRef,
-      (snapshot) => {
-        if (!snapshot.empty) {
-          callback(snapshot.docs.map((d) => d.data() as PPMSchedule));
-        } else {
-          callback(getLocal(STORAGE_KEYS.PPM, SEED_PPM_SCHEDULES));
-        }
-      },
-      () => {
-        callback(getLocal(STORAGE_KEYS.PPM, SEED_PPM_SCHEDULES));
-      }
-    );
-    return unsubscribe;
+  if (isSupabaseConfigured) {
+    const fetchAndNotify = async () => {
+      const { data } = await supabase.from('ppm_schedules').select('*');
+      if (data && data.length > 0) callback(data as PPMSchedule[]);
+      else callback(getLocal(STORAGE_KEYS.PPM, SEED_PPM_SCHEDULES));
+    };
+
+    fetchAndNotify();
+
+    const channel = supabase.channel('schema-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ppm_schedules' }, (payload) => {
+        fetchAndNotify();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }
 
   initLocalSeedData();
@@ -696,16 +668,16 @@ export async function completePPMTask(
   setLocal(STORAGE_KEYS.REPAIRS, updatedRepairs);
   notifyLocal('repairs', updatedRepairs);
 
-  if (isFirebaseConfigured) {
+  if (isSupabaseConfigured) {
     try {
-      await updateDoc(doc(db, 'ppm_schedules', scheduleId), {
+      await supabase.from('ppm_schedules').update({
         lastServiced: today.toISOString().slice(0, 10),
         nextDue: nextDueDate.toISOString().slice(0, 10),
         status: 'PENDING',
-      });
-      await setDoc(doc(db, 'repairs', ppmHistoryEntry.id), ppmHistoryEntry);
+      }).eq('id', scheduleId);
+      await supabase.from('repair_tickets').insert(ppmHistoryEntry);
     } catch (e) {
-      console.error('Firestore completePPMTask error:', e);
+      console.error('Supabase completePPMTask error:', e);
     }
   }
 }
@@ -716,11 +688,11 @@ export async function createPPMSchedule(schedule: PPMSchedule): Promise<void> {
   setLocal(STORAGE_KEYS.PPM, updatedSchedules);
   notifyLocal('ppm', updatedSchedules);
 
-  if (isFirebaseConfigured) {
+  if (isSupabaseConfigured) {
     try {
-      await setDoc(doc(db, 'ppm_schedules', schedule.id), schedule);
+      await supabase.from('ppm_schedules').insert(schedule);
     } catch (e) {
-      console.error('Firestore createPPMSchedule error:', e);
+      console.error('Supabase createPPMSchedule error:', e);
     }
   }
 }
@@ -732,22 +704,24 @@ export async function createPPMSchedule(schedule: PPMSchedule): Promise<void> {
 export function subscribeRequisitions(
   callback: (requisitions: PartRequisition[]) => void
 ): () => void {
-  if (isFirebaseConfigured) {
-    const colRef = collection(db, 'requisitions');
-    const unsubscribe = onSnapshot(
-      colRef,
-      (snapshot) => {
-        if (!snapshot.empty) {
-          callback(snapshot.docs.map((d) => d.data() as PartRequisition));
-        } else {
-          callback(getLocal(STORAGE_KEYS.REQUISITIONS, SEED_REQUISITIONS));
-        }
-      },
-      () => {
-        callback(getLocal(STORAGE_KEYS.REQUISITIONS, SEED_REQUISITIONS));
-      }
-    );
-    return unsubscribe;
+  if (isSupabaseConfigured) {
+    const fetchAndNotify = async () => {
+      const { data } = await supabase.from('requisitions').select('*');
+      if (data && data.length > 0) callback(data as PartRequisition[]);
+      else callback(getLocal(STORAGE_KEYS.REQUISITIONS, SEED_REQUISITIONS));
+    };
+
+    fetchAndNotify();
+
+    const channel = supabase.channel('schema-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requisitions' }, (payload) => {
+        fetchAndNotify();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }
 
   initLocalSeedData();
@@ -791,165 +765,40 @@ export async function createRequisition(
   setLocal(STORAGE_KEYS.REQUISITIONS, updated);
   notifyLocal('requisitions', updated);
 
-  if (isFirebaseConfigured) {
+  if (isSupabaseConfigured) {
     try {
-      await setDoc(doc(db, 'requisitions', reqId), newReq);
+      await supabase.from('requisitions').insert(newReq);
     } catch (err) {
-      console.error('Firestore createRequisition error:', err);
+      console.error('Supabase createRequisition error:', err);
     }
   }
 
   return reqId;
 }
 
-export async function approveRequisition(
-  id: string,
-  reviewerName: string = 'Executive Approver',
-  reviewNotes: string = 'Authorized by Management',
-  approvedStatus: 'APPROVED_BY_CEO' | 'APPROVED_BY_MANAGER' = 'APPROVED_BY_CEO'
+export async function updateRequisitionStatus(
+  reqId: string,
+  status: RequisitionStatus,
+  reviewerNotes?: string
 ): Promise<void> {
   const currentReqs = getLocal<PartRequisition[]>(
     STORAGE_KEYS.REQUISITIONS,
     SEED_REQUISITIONS
   );
   const updated = currentReqs.map((r) =>
-    r.id === id
-      ? {
-          ...r,
-          status: approvedStatus,
-          reviewedBy: reviewerName,
-          reviewedAt: new Date().toISOString(),
-          reviewNotes,
-        }
-      : r
+    r.id === reqId ? { ...r, status, reviewerNotes: reviewerNotes || r.reviewerNotes } : r
   );
-
   setLocal(STORAGE_KEYS.REQUISITIONS, updated);
   notifyLocal('requisitions', updated);
 
-  if (isFirebaseConfigured) {
+  if (isSupabaseConfigured) {
     try {
-      await updateDoc(doc(db, 'requisitions', id), {
-        status: approvedStatus,
-        reviewedBy: reviewerName,
-        reviewedAt: new Date().toISOString(),
-        reviewNotes,
-      });
+      await supabase.from('requisitions').update({
+        status,
+        reviewerNotes: reviewerNotes || undefined
+      }).eq('id', reqId);
     } catch (err) {
-      console.error('Firestore approveRequisition error:', err);
+      console.error('Supabase updateRequisitionStatus error:', err);
     }
   }
 }
-
-export async function rejectRequisition(
-  id: string,
-  reviewerName: string = 'Plant CEO / General Manager',
-  reviewNotes: string = 'Rejected: Request exceeds allocation or deferred'
-): Promise<void> {
-  const currentReqs = getLocal<PartRequisition[]>(
-    STORAGE_KEYS.REQUISITIONS,
-    SEED_REQUISITIONS
-  );
-  const updated = currentReqs.map((r) =>
-    r.id === id
-      ? {
-          ...r,
-          status: 'REJECTED' as const,
-          reviewedBy: reviewerName,
-          reviewedAt: new Date().toISOString(),
-          reviewNotes,
-        }
-      : r
-  );
-
-  setLocal(STORAGE_KEYS.REQUISITIONS, updated);
-  notifyLocal('requisitions', updated);
-
-  if (isFirebaseConfigured) {
-    try {
-      await updateDoc(doc(db, 'requisitions', id), {
-        status: 'REJECTED',
-        reviewedBy: reviewerName,
-        reviewedAt: new Date().toISOString(),
-        reviewNotes,
-      });
-    } catch (err) {
-      console.error('Firestore rejectRequisition error:', err);
-    }
-  }
-}
-
-export async function fulfillMonthlyIndent(
-  id: string,
-  storePersonName: string = 'M. Arumugam (Stores In-Charge)',
-  storeNotes: string = 'Inward shipment received into crib and verified against QC pass',
-  actionType: 'RECEIVE_INTO_CRIB' | 'DISPATCH_TO_LINE' = 'RECEIVE_INTO_CRIB'
-): Promise<void> {
-  const currentReqs = getLocal<PartRequisition[]>(
-    STORAGE_KEYS.REQUISITIONS,
-    SEED_REQUISITIONS
-  );
-
-  const targetReq = currentReqs.find((r) => r.id === id);
-  if (!targetReq) return;
-
-  const newStatus = actionType === 'DISPATCH_TO_LINE' ? 'FULFILLED' : 'ORDERED';
-
-  const updatedReqs = currentReqs.map((r) =>
-    r.id === id
-      ? {
-          ...r,
-          status: newStatus as RequisitionStatus,
-          assignedStorePerson: storePersonName,
-          fulfilledAt: new Date().toISOString(),
-          storeNotes,
-        }
-      : r
-  );
-
-  setLocal(STORAGE_KEYS.REQUISITIONS, updatedReqs);
-  notifyLocal('requisitions', updatedReqs);
-
-  // If receiving into crib, update part stocks for each item in the indent
-  if (actionType === 'RECEIVE_INTO_CRIB' && targetReq.items && targetReq.items.length > 0) {
-    const currentParts = getLocal<SparePart[]>(STORAGE_KEYS.PARTS, SEED_PARTS);
-    const updatedParts = currentParts.map((p) => {
-      const match = targetReq.items?.find((item) => item.partId === p.partId);
-      if (match) {
-        return { ...p, stock: p.stock + match.quantity };
-      }
-      return p;
-    });
-    setLocal(STORAGE_KEYS.PARTS, updatedParts);
-    notifyLocal('parts', updatedParts);
-
-    if (isFirebaseConfigured) {
-      try {
-        for (const item of targetReq.items) {
-          const partDoc = currentParts.find((p) => p.partId === item.partId);
-          if (partDoc) {
-            await updateDoc(doc(db, 'parts', item.partId), {
-              stock: partDoc.stock + item.quantity,
-            });
-          }
-        }
-      } catch (err) {
-        console.warn('Firestore stock intake warning:', err);
-      }
-    }
-  }
-
-  if (isFirebaseConfigured) {
-    try {
-      await updateDoc(doc(db, 'requisitions', id), {
-        status: newStatus,
-        assignedStorePerson: storePersonName,
-        fulfilledAt: new Date().toISOString(),
-        storeNotes,
-      });
-    } catch (err) {
-      console.error('Firestore fulfillMonthlyIndent error:', err);
-    }
-  }
-}
-

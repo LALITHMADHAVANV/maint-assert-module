@@ -3,17 +3,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '@/types/cmms';
 import { SEED_USERS } from '@/lib/seedData';
-import { auth, db } from '@/lib/firebase';
-import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut as fbSignOut,
-  onAuthStateChanged,
-  updateProfile,
-  updatePassword,
-  User as FirebaseUser,
-} from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export const ROLE_PASSWORDS: Record<UserRole, string> = {
   CEO: 'ceo123',
@@ -27,8 +18,8 @@ export const ROLE_PASSWORDS: Record<UserRole, string> = {
 interface AuthContextType {
   user: UserProfile | null;
   role: UserRole;
-  firebaseUser: FirebaseUser | null;
-  isFirebaseLive: boolean;
+  supabaseUser: SupabaseUser | null;
+  isSupabaseLive: boolean;
   isLoading: boolean;
   loginAsRole: (role: UserRole) => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
@@ -66,52 +57,67 @@ function resolveUserTitle(role: UserRole): string {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Sync profile document with Firestore users table
-  const syncUserProfile = async (fbUser: FirebaseUser): Promise<UserProfile> => {
+  // Sync profile document with Supabase users table
+  const syncUserProfile = async (sbUser: SupabaseUser): Promise<UserProfile> => {
     try {
-      const userDocRef = doc(db, 'users', fbUser.uid);
-      const snap = await getDoc(userDocRef);
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', sbUser.id)
+        .single();
 
-      if (snap.exists()) {
-        const data = snap.data() as UserProfile;
-        setUser(data);
-        return data;
+      if (data && !error) {
+        setUser(data as UserProfile);
+        return data as UserProfile;
       }
 
       // Check if email matches a known seed template
       const matchedTemplate = SEED_USERS.find(
-        (u) => u.email.toLowerCase() === (fbUser.email || '').toLowerCase()
+        (u) => u.email.toLowerCase() === (sbUser.email || '').toLowerCase()
       );
 
       const determinedRole: UserRole = matchedTemplate
         ? matchedTemplate.role
-        : resolveUserRole(fbUser.email || '');
+        : resolveUserRole(sbUser.email || '');
 
       const newProfile: UserProfile = {
-        uid: fbUser.uid,
-        name: matchedTemplate?.name || fbUser.displayName || fbUser.email?.split('@')[0] || 'Factory Staff',
-        email: fbUser.email || '',
+        uid: sbUser.id, // In Supabase, use Auth UID as the Profile ID
+        name: matchedTemplate?.name || sbUser.email?.split('@')[0] || 'Factory Staff',
+        email: sbUser.email || '',
         role: determinedRole,
         title: matchedTemplate?.title || resolveUserTitle(determinedRole),
       };
 
-      await setDoc(userDocRef, newProfile);
+      // Create new user profile in the public.users table
+      const { error: insertError } = await supabase.from('users').insert([{
+        id: sbUser.id,
+        uid: sbUser.id,
+        name: newProfile.name,
+        email: newProfile.email,
+        role: newProfile.role,
+        title: newProfile.title
+      }]);
+
+      if (insertError) {
+        console.warn('Supabase profile creation warning:', insertError);
+      }
+
       setUser(newProfile);
       return newProfile;
     } catch (err) {
-      console.warn('Firestore profile sync fallback:', err);
-      // Fallback in case Firestore rules or network delay
+      console.warn('Supabase profile sync fallback:', err);
+      // Fallback in case DB rules or network delay
       const matched = SEED_USERS.find(
-        (u) => u.email.toLowerCase() === (fbUser.email || '').toLowerCase()
+        (u) => u.email.toLowerCase() === (sbUser.email || '').toLowerCase()
       );
-      const role = matched ? matched.role : resolveUserRole(fbUser.email || '');
+      const role = matched ? matched.role : resolveUserRole(sbUser.email || '');
       const fallbackProfile: UserProfile = {
-        uid: fbUser.uid,
-        name: matched?.name || fbUser.displayName || fbUser.email?.split('@')[0] || 'Factory Staff',
-        email: fbUser.email || '',
+        uid: sbUser.id,
+        name: matched?.name || sbUser.email?.split('@')[0] || 'Factory Staff',
+        email: sbUser.email || '',
         role,
         title: matched?.title || resolveUserTitle(role),
       };
@@ -121,18 +127,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Pure Firebase Auth listener
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      setFirebaseUser(fbUser);
-      if (fbUser) {
-        await syncUserProfile(fbUser);
-      } else {
-        setUser(null);
-      }
-      setIsLoading(false);
+    // Initial fetch
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user || null;
+      setSupabaseUser(user);
+      if (user) syncUserProfile(user);
+      else setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    // Supabase Auth listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        const user = session?.user || null;
+        setSupabaseUser(user);
+        if (user) {
+          await syncUserProfile(user);
+        } else {
+          setUser(null);
+        }
+        setIsLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const loginWithEmail = async (rawEmail: string, rawPass: string): Promise<void> => {
@@ -150,62 +167,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      // 1. Attempt direct sign-in with Firebase Auth
-      const cred = await signInWithEmailAndPassword(auth, email, pass);
-      await syncUserProfile(cred.user);
-    } catch (err: unknown) {
-      const fbError = err as { code?: string; message?: string };
+      // 1. Attempt direct sign-in with Supabase Auth
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: pass,
+      });
 
-      // If invalid password or user not found, try fallback passwords
-      if (
-        fbError.code === 'auth/invalid-credential' ||
-        fbError.code === 'auth/invalid-login-credentials' ||
-        fbError.code === 'auth/wrong-password' ||
-        fbError.code === 'auth/user-not-found'
-      ) {
-        const determinedRole = resolveUserRole(email);
-        const rolePass = ROLE_PASSWORDS[determinedRole] || 'sewing123';
-        const tryPasses = [rolePass, 'sewing123'].filter((p) => p && p !== pass);
+      if (error) {
+        // If invalid password or user not found, try fallback passwords
+        if (error.message.includes('Invalid login credentials')) {
+          const determinedRole = resolveUserRole(email);
+          const rolePass = ROLE_PASSWORDS[determinedRole] || 'sewing123';
+          const tryPasses = [rolePass, 'sewing123'].filter((p) => p && p !== pass);
 
-        // Try candidate passwords
-        for (const candidate of tryPasses) {
-          try {
-            const altCred = await signInWithEmailAndPassword(auth, email, candidate);
-            // Optionally sync Firebase password to what user typed
-            try {
-              await updatePassword(altCred.user, pass);
-            } catch (pErr) {
-              console.warn('Could not auto-sync password:', pErr);
+          // Try candidate passwords
+          for (const candidate of tryPasses) {
+            const { data: altData, error: altError } = await supabase.auth.signInWithPassword({
+              email,
+              password: candidate,
+            });
+
+            if (!altError && altData.user) {
+               // Update password directly since we are now logged in
+               await supabase.auth.updateUser({ password: pass });
+               return;
             }
-            await syncUserProfile(altCred.user);
-            return;
-          } catch {
-            // continue checking
+          }
+
+          // If user does not exist in Supabase, auto-register them
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password: pass,
+          });
+
+          if (signUpError) {
+             throw new Error(`Incorrect password for ${email}. Default password for this role is: ${rolePass} (or sewing123)`);
+          }
+
+          if (signUpData.user) {
+             return;
           }
         }
-
-        // If user does not exist in Firebase, auto-register them
-        try {
-          const newCred = await createUserWithEmailAndPassword(auth, email, pass);
-          const matched = SEED_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
-          const role = matched ? matched.role : resolveUserRole(email);
-          const name = matched ? matched.name : email.split('@')[0];
-
-          await updateProfile(newCred.user, { displayName: name });
-          await syncUserProfile(newCred.user);
-          return;
-        } catch (createErr: unknown) {
-          const createFbErr = createErr as { code?: string };
-          if (createFbErr.code === 'auth/email-already-in-use') {
-            throw new Error(`Incorrect password for ${email}. Default password for this role is: ${rolePass} (or sewing123)`);
-          }
-          throw createErr;
-        }
+        throw error;
       }
-
-      throw err;
-    } finally {
+    } catch (err) {
       setIsLoading(false);
+      throw err;
     }
   };
 
@@ -227,19 +234,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateUserPassword = async (newPassword: string): Promise<void> => {
-    if (!firebaseUser) {
+    if (!supabaseUser) {
       throw new Error('No user is currently authenticated.');
     }
     if (!newPassword || newPassword.length < 6) {
       throw new Error('Password must be at least 6 characters long.');
     }
-    await updatePassword(firebaseUser, newPassword);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
   };
 
   const logout = async (): Promise<void> => {
-    await fbSignOut(auth);
+    await supabase.auth.signOut();
     setUser(null);
-    setFirebaseUser(null);
+    setSupabaseUser(null);
   };
 
   return (
@@ -247,8 +255,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         role: user?.role || 'MECHANIC',
-        firebaseUser,
-        isFirebaseLive: true,
+        supabaseUser,
+        isSupabaseLive: true,
         isLoading,
         loginAsRole,
         loginWithEmail,

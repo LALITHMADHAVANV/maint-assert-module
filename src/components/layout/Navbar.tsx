@@ -310,7 +310,7 @@ export function Navbar() {
                 className="hidden xl:flex items-center space-x-1.5 text-[11px] bg-slate-900 hover:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700 cursor-pointer text-slate-300 transition"
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="font-semibold text-emerald-300">Firebase Live</span>
+                <span className="font-semibold text-emerald-300">Supabase Live</span>
                 <RefreshCw className={`w-3 h-3 text-slate-400 ml-1 ${isSeeding ? 'animate-spin' : ''}`} />
               </div>
 

@@ -1,28 +1,20 @@
 import { NextResponse } from 'next/server';
-import { initializeApp, getApps } from 'firebase/app';
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  updatePassword,
-  updateProfile,
-} from 'firebase/auth';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { createClient } from '@supabase/supabase-js';
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyBerHuo4pX5vCdn3qJbR6RWOLpf42WBjRc',
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'maintenance-module-9c497.firebaseapp.com',
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'maintenance-module-9c497',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'maintenance-module-9c497.firebasestorage.app',
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '420649959262',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:420649959262:web:9849e8e7d072cd372c99cf',
-};
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-function getFirebase() {
-  const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-  return { app, auth, db };
+// Create a Supabase client with the service role key for admin privileges
+function getSupabaseAdmin() {
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Supabase URL or Service Role Key is missing in environment variables');
+  }
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    }
+  });
 }
 
 export async function POST(req: Request) {
@@ -43,90 +35,78 @@ export async function POST(req: Request) {
       );
     }
 
-    const { auth, db } = getFirebase();
-    const candidatePasswords = [
-      password,
-      'sewing123',
-      'ceo123',
-      'admin123',
-      'senior123',
-      'mechanic123',
-      'stores123',
-      'password123',
-    ];
+    const supabaseAdmin = getSupabaseAdmin();
 
-    let userCred = null;
+    // 1. Search for existing user by email
+    // In Supabase, the best way to get a user by email via admin API is to list users or just try creating/updating
+    // Since we don't have a direct "getUserByEmail" that is simple without pagination, we'll try to find them in the public.users table first
+    const { data: existingUser } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', email.trim())
+      .single();
 
-    // Try candidate passwords to sign in and update
-    for (const pwd of candidatePasswords) {
-      try {
-        userCred = await signInWithEmailAndPassword(auth, email.trim(), pwd);
-        break;
-      } catch {
-        // continue trying
-      }
-    }
-
-    if (userCred) {
-      // User exists, update password
-      await updatePassword(userCred.user, password.trim());
-      if (name) {
-        await updateProfile(userCred.user, { displayName: name });
-      }
-
-      // Sync Firestore profile
-      const userDocRef = doc(db, 'users', userCred.user.uid);
-      await setDoc(
-        userDocRef,
-        {
-          uid: userCred.user.uid,
-          email: email.trim(),
-          ...(name && { name }),
-          ...(role && { role }),
-          defaultPassword: password.trim(),
-          updatedAt: new Date().toISOString(),
-        },
-        { merge: true }
+    if (existingUser) {
+      // User exists, update password via Admin API
+      const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        existingUser.id,
+        { password: password.trim() }
       );
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Update public.users profile if needed
+      const updatePayload: any = { defaultPassword: password.trim() };
+      if (name) updatePayload.name = name;
+      if (role) updatePayload.role = role;
+      updatePayload.updatedAt = new Date().toISOString();
+
+      await supabaseAdmin
+        .from('users')
+        .update(updatePayload)
+        .eq('id', existingUser.id);
 
       return NextResponse.json({
         success: true,
-        message: `Password for ${email} has been updated to '${password}' in Firebase Auth!`,
-        uid: userCred.user.uid,
+        message: `Password for ${email} has been updated to '${password}' in Supabase Auth!`,
+        uid: existingUser.id,
       });
     } else {
       // User does not exist, create new user with password
-      try {
-        const newCred = await createUserWithEmailAndPassword(auth, email.trim(), password.trim());
-        if (name) {
-          await updateProfile(newCred.user, { displayName: name });
-        }
+      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email: email.trim(),
+        password: password.trim(),
+        email_confirm: true, // Auto-confirm email
+      });
 
-        const userDocRef = doc(db, 'users', newCred.user.uid);
-        await setDoc(
-          userDocRef,
-          {
-            uid: newCred.user.uid,
+      if (createError) {
+        return NextResponse.json(
+          { error: createError.message || 'Failed to create user in Supabase Auth' },
+          { status: 500 }
+        );
+      }
+
+      if (newUser.user) {
+        // Sync to public.users table
+        await supabaseAdmin
+          .from('users')
+          .insert({
+            id: newUser.user.id,
+            uid: newUser.user.id,
             email: email.trim(),
             name: name || email.split('@')[0],
             role: role || 'MECHANIC',
-            defaultPassword: password.trim(),
-            createdAt: new Date().toISOString(),
-          },
-          { merge: true }
-        );
+            title: 'Factory Staff',
+            created_at: new Date().toISOString(),
+          });
 
         return NextResponse.json({
           success: true,
-          message: `User ${email} created with password '${password}' in Firebase Auth!`,
-          uid: newCred.user.uid,
+          message: `User ${email} created with password '${password}' in Supabase Auth!`,
+          uid: newUser.user.id,
         });
-      } catch (createErr: unknown) {
-        const fbErr = createErr as { code?: string; message?: string };
-        return NextResponse.json(
-          { error: fbErr.message || 'Failed to create user in Firebase Auth' },
-          { status: 500 }
-        );
       }
     }
   } catch (err: unknown) {
