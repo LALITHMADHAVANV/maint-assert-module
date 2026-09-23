@@ -1,4 +1,4 @@
--- Supabase Database Schema
+-- Supabase Database Schema (Fixed for camelCase TypeScript compatibility)
 
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";
@@ -14,14 +14,11 @@ create table public.users (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Row Level Security for users
 alter table public.users enable row level security;
 create policy "Users can view their own profile." on public.users for select using (auth.uid() = id);
--- Allow all reads for now
 create policy "Enable read access for all users" on public.users for select using (true);
 create policy "Enable insert for authenticated users only" on public.users for insert with check (auth.role() = 'authenticated');
 create policy "Enable update for authenticated users only" on public.users for update using (auth.role() = 'authenticated');
-
 
 -- Machines Table
 create table public.machines (
@@ -31,19 +28,25 @@ create table public.machines (
   model text,
   category text,
   department text,
-  machine_class text,
+  "machineClass" text,
   type text,
-  type_name text,
-  motor_type text,
-  purchase_date date,
+  "typeName" text,
+  "motorType" text,
+  "purchaseDate" text,
   cost numeric,
   status text,
-  current_line text,
-  station_no text,
+  "currentLine" text,
+  "stationNo" text,
   operator text,
-  total_downtime_minutes integer default 0,
-  age_years numeric,
-  specs text,
+  "totalDowntimeMinutes" integer default 0,
+  "ageYears" numeric,
+  specs jsonb,
+  "lastMovedAt" text,
+  "lastMovedReason" text,
+  "lastMovedBy" text,
+  "previousLine" text,
+  "previousStation" text,
+  "relocationHistory" jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -55,19 +58,18 @@ create policy "Enable update for authenticated users only" on public.machines fo
 
 -- Spare Parts Table
 create table public.spare_parts (
-  id text primary key,
+  "partId" text primary key,
   sku text unique,
   name text,
   category text,
-  machine_type_compat text[],
-  current_stock integer default 0,
-  min_stock_level integer default 0,
-  price numeric,
+  compat text,
+  stock integer default 0,
+  "minStock" integer default 0,
+  "monthlyAllowance" integer default 0,
+  "unitCost" numeric,
   unit text,
   supplier text,
   location text,
-  status text,
-  qr_code text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -80,18 +82,20 @@ create policy "Enable update for authenticated users only" on public.spare_parts
 -- Repair Tickets Table
 create table public.repair_tickets (
   id text primary key,
-  machine_id text references public.machines(id),
-  ticket_type text,
-  severity text,
+  "machineId" text,
+  "machineType" text,
+  line text,
+  "faultCategory" text,
+  "faultDetails" text,
+  urgency text,
   status text,
-  reported_by text,
-  reported_at timestamp with time zone,
-  assigned_to text,
-  resolved_at timestamp with time zone,
-  issue_description text,
-  actions_taken text,
-  parts_used jsonb,
-  downtime_minutes integer default 0,
+  "reportedAt" text,
+  "reportedBy" text,
+  "attendedBy" text,
+  "resolvedAt" text,
+  "downtimeMinutes" integer default 0,
+  "actionTaken" text,
+  "partsUsed" jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -104,12 +108,13 @@ create policy "Enable update for authenticated users only" on public.repair_tick
 -- PPM Schedules Table
 create table public.ppm_schedules (
   id text primary key,
-  machine_id text references public.machines(id),
-  frequency_days integer,
-  last_completed timestamp with time zone,
-  next_due_date timestamp with time zone,
+  "machineId" text,
+  task text,
+  "intervalDays" integer,
+  "lastServiced" text,
+  "nextDue" text,
   status text,
-  checklist jsonb,
+  "assignedTo" text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -117,3 +122,35 @@ alter table public.ppm_schedules enable row level security;
 create policy "Enable read access for all users" on public.ppm_schedules for select using (true);
 create policy "Enable insert for authenticated users only" on public.ppm_schedules for insert with check (auth.role() = 'authenticated');
 create policy "Enable update for authenticated users only" on public.ppm_schedules for update using (auth.role() = 'authenticated');
+
+
+-- Requisitions Table
+create table public.requisitions (
+  id text primary key,
+  type text,
+  items jsonb,
+  "partId" text,
+  "partName" text,
+  sku text,
+  quantity integer,
+  unit text,
+  "itemCount" integer,
+  "estimatedCost" numeric,
+  urgency text,
+  "requiresCeoApproval" boolean,
+  "requestedBy" text,
+  "requestedByRole" text,
+  "monthYear" text,
+  "targetLine" text,
+  "targetMachineId" text,
+  justification text,
+  status text,
+  "createdAt" text,
+  "reviewerNotes" text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.requisitions enable row level security;
+create policy "Enable read access for all users" on public.requisitions for select using (true);
+create policy "Enable insert for authenticated users only" on public.requisitions for insert with check (auth.role() = 'authenticated');
+create policy "Enable update for authenticated users only" on public.requisitions for update using (auth.role() = 'authenticated');
