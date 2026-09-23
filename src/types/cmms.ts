@@ -2,6 +2,7 @@ export type AssetCategory =
   | 'MACHINE' // Sewing & Industrial Machinery
   | 'TABLE' // Work, Cutting, Inspection & Packing Tables
   | 'CHAIR' // Operator, Supervisor & Mechanic Seating
+  | 'VEHICLE' // Forklifts, Pallet Jacks, & Trolleys
   | 'UTILITY' // Central Utilities, Lighting Fixtures & Ventilation Fans
   | 'LIGHT' // Legacy alias under UTILITY
   | 'FAN'; // Legacy alias under UTILITY
@@ -43,6 +44,10 @@ export type MachineType =
   | 'CHAIR_OPERATOR' // Ergonomic Sewing Swivel Chair
   | 'CHAIR_SUPERVISOR' // High-Back Supervisor Chair
   | 'CHAIR_STOOL' // Mechanic Workshop Stool
+  // Vehicles & Transport
+  | 'VEHICLE_FORKLIFT' // Heavy Duty Forklift
+  | 'VEHICLE_PALLET_JACK' // Manual/Electric Pallet Jack
+  | 'VEHICLE_TROLLEY' // Material Handling Trolley
   // Lighting
   | 'LIGHT_HIGHBAY' // Overhead Linear High-Bay LED
   | 'LIGHT_TASK' // Needle Station Gooseneck Lamp
@@ -58,6 +63,7 @@ export type MachineType =
   // Custom Asset Extensions
   | 'CHAIR_CUSTOM' // Custom Chair / Seating
   | 'TABLE_CUSTOM' // Custom Table / Workstation
+  | 'VEHICLE_CUSTOM' // Custom Vehicle / Transport
   | 'UTILITY_CUSTOM' // Custom Utility Fixture
   | (string & {}); // Extensible custom types
 

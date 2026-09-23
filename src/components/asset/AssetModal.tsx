@@ -21,10 +21,11 @@ import {
   ArrowRightLeft,
   AlertOctagon,
   Layers,
-  SlidersHorizontal,
   ChevronRight,
   ShieldCheck,
   Printer,
+  Truck,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { Machine, FloorLine, AssetCategory, MachineStatus, RepairUrgency } from '@/types/cmms';
 import { createBreakdownTicket, relocateMachine, updateMachineStatus } from '@/lib/services/cmmsService';
@@ -75,6 +76,17 @@ export function getCategoryStyle(category?: AssetCategory, asset?: Machine): Cat
         border: 'border-teal-200',
         dot: 'bg-teal-500',
         activeBtn: 'bg-teal-600 text-white shadow-xs',
+      };
+    case 'VEHICLE':
+      return {
+        label: 'Plant Vehicle',
+        plural: 'Vehicles & Transport',
+        icon: Truck,
+        color: 'text-stone-800 bg-stone-50',
+        badge: 'bg-stone-100 text-stone-800 border-stone-300',
+        border: 'border-stone-200',
+        dot: 'bg-stone-500',
+        activeBtn: 'bg-stone-600 text-white shadow-xs',
       };
     case 'LIGHT':
       return {
@@ -178,6 +190,15 @@ function getAssetCategorySpecs(asset: Machine): Record<string, string> {
         'Casters & Base': '5-star reinforced nylon base with twin-wheel friction casters',
         'Swivel Range': '360° continuous rotation with ball-bearing hub',
         'Ergonomic Compliance': 'EN 1335-1 / OSHA Apparel Floor Ergonomics Standard',
+      };
+    case 'VEHICLE':
+      return {
+        'Load Capacity': 'Up to 2,500 kg maximum rated pallet lift',
+        'Mast/Lift Type': '3-stage full free hydraulic mast / manual pump lift',
+        'Tire Composition': 'Solid Polyurethane (PU) non-marking industrial wheels',
+        'Drive Type': 'Electric battery-operated / Manual manual-hydraulic',
+        'Operating Aisle': 'Minimum 3,000mm Right-Angle Stacking Aisle (AST)',
+        'Safety Features': 'Reversing alarm, strobe flasher, overhead operator guard',
       };
     case 'LIGHT':
       return {
@@ -303,6 +324,12 @@ function getCategorySOP(category?: AssetCategory, asset?: Machine): string[] {
         'Always set lumbar support firmly against the lower back before beginning extended sewing shifts.',
         'Never stand on swivel chairs or use them as a stepping ladder to retrieve garment rolls.',
       ];
+    case 'VEHICLE':
+      return [
+        'Inspect solid PU tires for debris embedded in treads before starting shift.',
+        'Check hydraulic fluid levels and verify lift mast operates smoothly without jerking.',
+        'Sound horn and engage warning strobes when crossing pedestrian crosswalks in the plant.',
+      ];
     case 'LIGHT':
       return [
         'Inspect task light gooseneck position to illuminate needle plate without casting shadows or glare.',
@@ -384,6 +411,12 @@ function getCategoryChecklist(category?: AssetCategory, asset?: Machine): string
         'Daily: Check pneumatic gas lift height retention under operator load.',
         'Weekly: Remove thread fluff and lint tangled in 5-star swivel wheel casters.',
         'Monthly: Tighten backrest bracket screws; inspect molded foam seat integrity.',
+      ];
+    case 'VEHICLE':
+      return [
+        'Daily: Check battery charge (if electric), test horn/brakes, verify tire condition.',
+        'Weekly: Inspect hydraulic lines for leaks, grease mast chains and carriage rollers.',
+        'Monthly: Service mast hydraulics, check steering linkage, load test to rated capacity.',
       ];
     case 'LIGHT':
       return [
@@ -761,6 +794,23 @@ export function AssetModal({
             >
               <Armchair className="w-3.5 h-3.5" />
               <span>Chairs</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveCategory('VEHICLE');
+                const first = allAssets.find((m) => m.category === 'VEHICLE');
+                if (first) setSelectedAssetId(first.id);
+              }}
+              className={`px-2.5 py-1.5 rounded-xl border transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                activeCategory === 'VEHICLE'
+                  ? 'bg-stone-600 text-white border-stone-600 shadow-xs'
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              <Truck className="w-3.5 h-3.5" />
+              <span>Vehicles</span>
             </button>
 
             <button

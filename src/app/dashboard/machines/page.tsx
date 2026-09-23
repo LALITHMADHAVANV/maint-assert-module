@@ -18,6 +18,7 @@ import {
   LayoutGrid,
   Armchair,
   Zap,
+  Truck,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Machine, MachineType, MotorType, FloorLine, MachineStatus, AssetCategory } from '@/types/cmms';
@@ -89,6 +90,20 @@ const SAMPLE_ASSETS = [
     station: 'Ceiling Grid Bay C',
     specs: '120W, 16,000 Lumen, 6500K Day White, IP65 dust and textile fiber resistant',
     label: 'Philips 120W High-Bay Overhead LED Fixture',
+  },
+  {
+    category: 'VEHICLE' as AssetCategory,
+    idPrefix: 'VHC-FLT-',
+    brand: 'Godrej',
+    type: 'VEHICLE_FORKLIFT' as MachineType,
+    model: 'GX-20',
+    date: '2023-01-10',
+    cost: 1500000,
+    motor: 'SERVO' as MotorType,
+    line: 'Warehouse & Storage' as FloorLine,
+    station: 'Loading Dock A',
+    specs: '2 Ton capacity, Diesel/Electric, 3-stage mast',
+    label: 'Godrej GX-20 Heavy Duty Forklift',
   },
 ];
 
@@ -498,11 +513,12 @@ export default function MachinesPage() {
 
   // Counts by category
   const categoryCounts = useMemo(() => {
-    const counts = { ALL: machines.length, MACHINE: 0, TABLE: 0, CHAIR: 0, UTILITY: 0 };
+    const counts = { ALL: machines.length, MACHINE: 0, TABLE: 0, CHAIR: 0, VEHICLE: 0, UTILITY: 0 };
     machines.forEach((m) => {
       const cat = m.category || getAssetCategoryForType(m.type);
       if (cat === 'TABLE') counts.TABLE++;
       else if (cat === 'CHAIR') counts.CHAIR++;
+      else if (cat === 'VEHICLE') counts.VEHICLE++;
       else if (cat === 'UTILITY' || cat === 'LIGHT' || cat === 'FAN') counts.UTILITY++;
       else counts.MACHINE++;
     });
@@ -572,7 +588,7 @@ export default function MachinesPage() {
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                 Factory Asset Category *
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
                 {ASSET_CATEGORIES.map((cat) => {
                   const isSelected = selectedCategory === cat.id;
                   return (
@@ -595,6 +611,9 @@ export default function MachinesPage() {
                         )}
                         {cat.id === 'CHAIR' && (
                           <Armchair className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-purple-600'}`} />
+                        )}
+                        {cat.id === 'VEHICLE' && (
+                          <Truck className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-stone-600'}`} />
                         )}
                         {cat.id === 'UTILITY' && (
                           <Zap className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-cyan-600'}`} />
@@ -1160,6 +1179,19 @@ export default function MachinesPage() {
             <Armchair className="w-3 h-3" />
             <span>Chairs &amp; Seating</span>
             <span className="text-[10px] opacity-75 font-mono">({categoryCounts.CHAIR})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterCategory('VEHICLE')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+              filterCategory === 'VEHICLE'
+                ? 'bg-stone-600 text-white shadow-xs'
+                : 'bg-stone-50 text-stone-700 hover:bg-stone-100'
+            }`}
+          >
+            <Truck className="w-3 h-3" />
+            <span>Vehicles &amp; Transport</span>
+            <span className="text-[10px] opacity-75 font-mono">({categoryCounts.VEHICLE})</span>
           </button>
           <button
             type="button"

@@ -229,7 +229,7 @@ export interface AssetCategoryMeta {
   name: string;
   singular: string;
   description: string;
-  iconName: 'Wrench' | 'LayoutGrid' | 'Armchair' | 'Zap';
+  iconName: 'Wrench' | 'LayoutGrid' | 'Armchair' | 'Zap' | 'Truck';
   badgeColor: string;
   idPrefix: string;
   subtypes: AssetSubtypeDef[];
@@ -556,6 +556,61 @@ export const ASSET_CATEGORIES: AssetCategoryMeta[] = [
     ],
   },
   {
+    id: 'VEHICLE',
+    name: 'Vehicles & Transport',
+    singular: 'Vehicle',
+    description: 'Forklifts, pallet jacks, trolleys and material handling vehicles',
+    iconName: 'Truck',
+    badgeColor: 'bg-stone-100 text-stone-800 border-stone-200',
+    idPrefix: 'VHC-',
+    subtypes: [
+      {
+        id: 'VEHICLE_FORKLIFT',
+        name: 'Heavy Duty Forklift',
+        category: 'VEHICLE',
+        brands: ['Godrej', 'Toyota', 'KION'],
+        defaultBrand: 'Godrej',
+        defaultModel: 'GX-20',
+        defaultCost: 1500000,
+        idPrefix: 'VHC-FLT-',
+        specs: '2 Ton capacity, Diesel/Electric, 3-stage mast',
+      },
+      {
+        id: 'VEHICLE_PALLET_JACK',
+        name: 'Manual/Electric Pallet Jack',
+        category: 'VEHICLE',
+        brands: ['Nilkamal', 'Godrej', 'Maini'],
+        defaultBrand: 'Nilkamal',
+        defaultModel: 'Hand Pallet Truck',
+        defaultCost: 25000,
+        idPrefix: 'VHC-PLT-',
+        specs: '2.5 Ton capacity, Polyurethane wheels, Hydraulic lift',
+      },
+      {
+        id: 'VEHICLE_TROLLEY',
+        name: 'Material Handling Trolley',
+        category: 'VEHICLE',
+        brands: ['Fabricator', 'Custom OEM'],
+        defaultBrand: 'Custom OEM',
+        defaultModel: 'Fabric Roll Trolley',
+        defaultCost: 12000,
+        idPrefix: 'VHC-TRL-',
+        specs: 'Heavy duty steel tubular frame with 4 heavy-duty castors',
+      },
+      {
+        id: 'VEHICLE_CUSTOM',
+        name: 'Custom Vehicle / Transport',
+        category: 'VEHICLE',
+        brands: ['Custom OEM'],
+        defaultBrand: 'Custom OEM',
+        defaultModel: 'Custom Transport Spec',
+        defaultCost: 20000,
+        idPrefix: 'VHC-CST-',
+        specs: 'Custom factory transport vehicle or cart',
+      },
+    ],
+  },
+  {
     id: 'UTILITY',
     name: 'Lighting, Ventilation & Plant Utilities',
     singular: 'Utility Fixture',
@@ -725,6 +780,7 @@ export function getAssetCategoryForType(type: MachineType): AssetCategory {
   if (meta) return meta.category;
   if (type.startsWith('TABLE_')) return 'TABLE';
   if (type.startsWith('CHAIR_')) return 'CHAIR';
+  if (type.startsWith('VEHICLE_')) return 'VEHICLE';
   if (type.startsWith('LIGHT_') || type.startsWith('FAN_') || type.startsWith('UTILITY_')) return 'UTILITY';
   return 'MACHINE';
 }

@@ -42,6 +42,7 @@ import {
   AlertCircle,
   Sparkles,
   ExternalLink,
+  Truck,
 } from 'lucide-react';
 import {
   Machine,
@@ -202,6 +203,15 @@ export function getCategoryMeta(category?: AssetCategory, asset?: Machine) {
         badge: 'bg-teal-50 text-teal-800 border-teal-200',
         dot: 'bg-teal-500',
       };
+    case 'VEHICLE':
+      return {
+        label: 'Plant Vehicle',
+        plural: 'Vehicles & Transport',
+        icon: Truck,
+        color: 'text-stone-700 bg-stone-50/80 border-stone-200/60',
+        badge: 'bg-stone-50 text-stone-800 border-stone-200',
+        dot: 'bg-stone-500',
+      };
     case 'LIGHT':
       return {
         label: 'Lighting Fixture',
@@ -314,7 +324,7 @@ export default function FloorTrackerPage() {
 
   // Filters & Views
   const [selectedDepartment, setSelectedDepartment] = useState<FactoryDepartment | 'ALL'>('ALL');
-  const [activeCategory, setActiveCategory] = useState<AssetCategory | 'ALL' | 'FURNITURE'>('ALL');
+  const [activeCategory, setActiveCategory] = useState<AssetCategory | 'ALL' | 'FURNITURE' | 'VEHICLE'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'BREAKDOWN' | 'BUFFER'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'DEPARTMENTS' | 'ASSETS' | 'WORKSTATIONS'>('DEPARTMENTS');
@@ -410,6 +420,7 @@ export default function FloorTrackerPage() {
       MACHINE: 0,
       TABLE: 0,
       CHAIR: 0,
+      VEHICLE: 0,
       LIGHT: 0,
       FAN: 0,
       UTILITY: 0,
@@ -427,6 +438,7 @@ export default function FloorTrackerPage() {
       MACHINE: 0,
       TABLE: 0,
       CHAIR: 0,
+      VEHICLE: 0,
       LIGHT: 0,
       FAN: 0,
       UTILITY: 0,
@@ -615,6 +627,17 @@ export default function FloorTrackerPage() {
         if (cat === 'LIGHT') handleUtilitySubtypeChangeInForm('LIGHT');
         else if (cat === 'FAN') handleUtilitySubtypeChangeInForm('FAN');
         else handleUtilitySubtypeChangeInForm(newUtilitySubtype);
+        break;
+      case 'VEHICLE':
+        setNewCategory('VEHICLE');
+        setNewId(`VHC-FLT-${rnd}`);
+        setNewBrand('Godrej');
+        setNewModel('GX-20');
+        setNewCost(15000);
+        setNewDepartment('Warehouse & Storage');
+        setNewLine('Warehouse & Storage');
+        setNewStation('Loading Dock A');
+        setNewSpecs('2 Ton capacity, Diesel/Electric, 3-stage mast');
         break;
       case 'MACHINE':
       default:
@@ -927,8 +950,8 @@ export default function FloorTrackerPage() {
           </div>
         </div>
 
-        {/* Right: 3 Category Cards in a Sleek Minimalist Grid */}
-        <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Right: 4 Category Cards in a Sleek Minimalist Grid */}
+        <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* 1. Machinery */}
           <div
             onClick={() => handleOpenAssetModal(undefined, 'MACHINE')}
@@ -983,7 +1006,34 @@ export default function FloorTrackerPage() {
             </div>
           </div>
 
-          {/* 3. Utilities, Lighting & Fans */}
+          {/* 3. Vehicles */}
+          <div
+            onClick={() => handleOpenAssetModal(undefined, 'VEHICLE')}
+            className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-xs hover:border-stone-400 hover:shadow-sm transition cursor-pointer flex flex-col justify-between group"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">Vehicles</span>
+                <div className="w-7 h-7 rounded-xl bg-stone-50 text-stone-600 flex items-center justify-center group-hover:scale-105 transition">
+                  <Truck className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-black text-slate-900 font-mono mt-1">
+                {categoryCounts.VEHICLE || 0}
+              </div>
+              <div className="text-xs font-semibold text-stone-600 font-mono">
+                ₹{(categoryValuations.VEHICLE || 0).toLocaleString('en-IN')}
+              </div>
+            </div>
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+              <span>Transport</span>
+              <span className="text-stone-600 font-bold group-hover:translate-x-0.5 transition flex items-center">
+                Specs <ChevronRight className="w-3 h-3" />
+              </span>
+            </div>
+          </div>
+
+          {/* 4. Utilities, Lighting & Fans */}
           <div
             onClick={() => handleOpenAssetModal(undefined, 'UTILITY')}
             className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-xs hover:border-purple-400 hover:shadow-sm transition cursor-pointer flex flex-col justify-between group"
@@ -1063,6 +1113,7 @@ export default function FloorTrackerPage() {
               <option value="ALL">All Categories ({totalAssets})</option>
               <option value="MACHINE">Machinery ({categoryCounts.MACHINE || 0})</option>
               <option value="FURNITURE">Furniture ({(categoryCounts.TABLE || 0) + (categoryCounts.CHAIR || 0)})</option>
+              <option value="VEHICLE">Vehicles ({categoryCounts.VEHICLE || 0})</option>
               <option value="UTILITY">Utilities & Facilities ({categoryCounts.UTILITY || 0})</option>
             </select>
             <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-3 text-slate-400 pointer-events-none" />
@@ -1601,11 +1652,12 @@ export default function FloorTrackerPage() {
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Asset Category *
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs font-semibold">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-xs font-semibold">
                   {[
                     { id: 'MACHINE', label: 'Machinery', icon: Wrench },
                     { id: 'TABLE', label: 'Work Table', icon: LayoutGrid },
                     { id: 'CHAIR', label: 'Chair / Seat', icon: Armchair },
+                    { id: 'VEHICLE', label: 'Vehicle', icon: Truck },
                     { id: 'UTILITY', label: 'Plant Utility', icon: Flame },
                   ].map((cat) => {
                     const CatIcon = cat.icon;
