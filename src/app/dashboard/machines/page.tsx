@@ -125,12 +125,29 @@ export default function MachinesPage() {
   // Sample index for autofill cycling
   const [sampleIdx, setSampleIdx] = useState(0);
 
+  // Custom brand & custom subtype state
+  const [customBrands, setCustomBrands] = useState<string[]>([]);
+  const [customSubtypes, setCustomSubtypes] = useState<AssetSubtypeDef[]>([]);
+  const [isCustomBrand, setIsCustomBrand] = useState(false);
+  const [customBrandInput, setCustomBrandInput] = useState('');
+  const [isCustomType, setIsCustomType] = useState(false);
+  const [customTypeName, setCustomTypeName] = useState('');
+  const [customSpecs, setCustomSpecs] = useState('');
+
   // Host origin for QR payload
   const [origin, setOrigin] = useState('https://textech.factory');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setOrigin(window.location.origin);
+      try {
+        const savedBrands = localStorage.getItem('textech_custom_brands');
+        if (savedBrands) setCustomBrands(JSON.parse(savedBrands));
+        const savedSubtypes = localStorage.getItem('textech_custom_subtypes');
+        if (savedSubtypes) setCustomSubtypes(JSON.parse(savedSubtypes));
+      } catch (e) {
+        console.error('Failed to load custom catalog from localStorage', e);
+      }
     }
   }, []);
 
@@ -155,19 +172,31 @@ export default function MachinesPage() {
     return ASSET_CATEGORIES.find((c) => c.id === selectedCategory) || ASSET_CATEGORIES[0];
   }, [selectedCategory]);
 
-  // Available brands for the current subtype or category
+  // Subtypes for the current category including any user-added custom varieties
+  const allSubtypesForCategory = useMemo(() => {
+    const std = currentCategoryDef.subtypes;
+    const customs = customSubtypes.filter((s) => s.category === selectedCategory);
+    return [...std, ...customs];
+  }, [currentCategoryDef, customSubtypes, selectedCategory]);
+
+  // Available brands for the current subtype or category (combines OEM catalog + custom brands)
   const availableBrands: string[] = useMemo(() => {
-    const subDef = ASSET_SUBTYPE_LOOKUP[mType];
+    const subDef =
+      ASSET_SUBTYPE_LOOKUP[mType] || customSubtypes.find((s) => s.id === mType);
+    let brands: string[] = [];
     if (subDef && subDef.brands && subDef.brands.length > 0) {
-      return subDef.brands;
+      brands = subDef.brands;
+    } else {
+      brands = currentCategoryDef.subtypes.flatMap((s) => s.brands);
     }
-    const catBrands = Array.from(new Set(currentCategoryDef.subtypes.flatMap((s) => s.brands)));
-    return catBrands.length > 0 ? catBrands : ['Generic OEM'];
-  }, [mType, currentCategoryDef]);
+    return Array.from(new Set([...brands, ...customBrands])).filter(Boolean);
+  }, [mType, currentCategoryDef, customBrands, customSubtypes]);
 
   // Handler for category switch
   const handleCategorySelect = (cat: AssetCategory) => {
     setSelectedCategory(cat);
+    setIsCustomType(false);
+    setIsCustomBrand(false);
     const catDef = ASSET_CATEGORIES.find((c) => c.id === cat) || ASSET_CATEGORIES[0];
     const firstSub = catDef.subtypes[0];
     if (firstSub) {
@@ -182,8 +211,28 @@ export default function MachinesPage() {
 
   // Handler for subtype change
   const handleSubtypeChange = (type: MachineType) => {
+    if (type === '__CUSTOM_TYPE__') {
+      setIsCustomType(true);
+      const prefix =
+        selectedCategory === 'CHAIR'
+          ? 'CHR-CST-'
+          : selectedCategory === 'TABLE'
+          ? 'TBL-CST-'
+          : selectedCategory === 'UTILITY'
+          ? 'UTL-CST-'
+          : 'MC-CST-';
+      const rnd = Math.floor(100 + Math.random() * 900);
+      setMId(`${prefix}${rnd}`);
+      setCustomTypeName('');
+      setCustomSpecs('');
+      setMModel('Custom Specification');
+      return;
+    }
+
+    setIsCustomType(false);
     setMType(type);
-    const meta = ASSET_SUBTYPE_LOOKUP[type];
+    const meta =
+      ASSET_SUBTYPE_LOOKUP[type] || customSubtypes.find((s) => s.id === type);
     if (meta) {
       setMModel(meta.defaultModel);
       setMBrand(meta.defaultBrand);
@@ -199,6 +248,8 @@ export default function MachinesPage() {
     setSampleIdx((prev) => prev + 1);
 
     const rnd = Math.floor(100 + Math.random() * 900);
+    setIsCustomType(false);
+    setIsCustomBrand(false);
     setSelectedCategory(s.category);
     setMId(`${s.idPrefix}${rnd}`);
     setMBrand(s.brand);
@@ -219,11 +270,66 @@ export default function MachinesPage() {
     const cleanId = mId.trim();
     if (!cleanId) return;
 
-    const typeName = ASSET_SUBTYPE_LOOKUP[mType]?.name || mType;
+    const finalBrand =
+      isCustomBrand && customBrandInput.trim() ? customBrandInput.trim() : mBrand;
+    let finalTypeName =
+      ASSET_SUBTYPE_LOOKUP[mType]?.name ||
+      customSubtypes.find((s) => s.id === mType)?.name ||
+      mType;
+    let finalSpecs =
+      ASSET_SUBTYPE_LOOKUP[mType]?.specs ||
+      customSubtypes.find((s) => s.id === mType)?.specs ||
+      '';
+
+    // Persist newly added custom brand to localStorage
+    if (isCustomBrand && customBrandInput.trim()) {
+      const trimmed = customBrandInput.trim();
+      if (!customBrands.includes(trimmed)) {
+        const nextBrands = [...customBrands, trimmed];
+        setCustomBrands(nextBrands);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('textech_custom_brands', JSON.stringify(nextBrands));
+        }
+      }
+    }
+
+    // Persist newly added custom subtype to localStorage
+    if (isCustomType && customTypeName.trim()) {
+      finalTypeName = customTypeName.trim();
+      finalSpecs = customSpecs.trim() || 'Custom factory specification';
+      const customId = `CUSTOM_${selectedCategory}_${Date.now()}`;
+      const prefix =
+        selectedCategory === 'CHAIR'
+          ? 'CHR-CST-'
+          : selectedCategory === 'TABLE'
+          ? 'TBL-CST-'
+          : selectedCategory === 'UTILITY'
+          ? 'UTL-CST-'
+          : 'MC-CST-';
+
+      const newDef: AssetSubtypeDef = {
+        id: customId as any,
+        name: finalTypeName,
+        category: selectedCategory,
+        brands: [finalBrand],
+        defaultBrand: finalBrand,
+        defaultModel: mModel,
+        defaultCost: mCost,
+        idPrefix: prefix,
+        specs: finalSpecs,
+      };
+
+      const nextSubtypes = [...customSubtypes, newDef];
+      setCustomSubtypes(nextSubtypes);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('textech_custom_subtypes', JSON.stringify(nextSubtypes));
+      }
+    }
+
     const newAsset: Machine = {
       id: cleanId,
-      name: `${mBrand} ${typeName} (${mModel})`,
-      brand: mBrand,
+      name: `${finalBrand} ${finalTypeName} (${mModel})`,
+      brand: finalBrand,
       model: mModel.trim() || 'Standard Model',
       category: selectedCategory,
       machineClass:
@@ -235,7 +341,7 @@ export default function MachinesPage() {
             : 'SINGLE_NEEDLE'
           : undefined,
       type: mType,
-      typeName: typeName,
+      typeName: finalTypeName,
       motorType: mMotor,
       purchaseDate: mDate,
       cost: mCost,
@@ -244,12 +350,15 @@ export default function MachinesPage() {
       stationNo: mStation.trim() || 'Station 01',
       totalDowntimeMinutes: 0,
       ageYears: parseFloat(calculatedAge) || 0,
-      specs: ASSET_SUBTYPE_LOOKUP[mType]?.specs || '',
+      specs: finalSpecs,
     };
 
     try {
       await createMachine(newAsset);
-      showToast(`Asset ${cleanId} registered & QR sticker generated!`, 'success');
+      showToast(
+        `Asset ${cleanId} (${finalBrand} ${finalTypeName}) registered & QR sticker generated!`,
+        'success'
+      );
     } catch (err) {
       showToast('Failed to register asset', 'error');
       console.error(err);
@@ -260,6 +369,8 @@ export default function MachinesPage() {
   const handleSelectForPreview = (m: Machine) => {
     const cat = m.category || getAssetCategoryForType(m.type);
     setSelectedCategory(cat);
+    setIsCustomType(false);
+    setIsCustomBrand(false);
     setMId(m.id);
     setMBrand(m.brand);
     setMType(m.type);
@@ -275,11 +386,25 @@ export default function MachinesPage() {
   // Construct current active asset object for document preview & printing
   const currentMachineObj: Machine = useMemo(() => {
     const existing = machines.find((m) => m.id === mId);
-    const typeName = ASSET_SUBTYPE_LOOKUP[mType]?.name || mType;
+    const activeBrand =
+      isCustomBrand && customBrandInput.trim() ? customBrandInput.trim() : mBrand;
+    const typeName =
+      isCustomType && customTypeName.trim()
+        ? customTypeName.trim()
+        : ASSET_SUBTYPE_LOOKUP[mType]?.name ||
+          customSubtypes.find((s) => s.id === mType)?.name ||
+          mType;
+    const specs =
+      isCustomType && customSpecs.trim()
+        ? customSpecs.trim()
+        : ASSET_SUBTYPE_LOOKUP[mType]?.specs ||
+          customSubtypes.find((s) => s.id === mType)?.specs ||
+          '';
+
     return {
       id: mId,
-      name: `${mBrand} ${mModel}`,
-      brand: mBrand,
+      name: `${activeBrand} ${mModel}`,
+      brand: activeBrand,
       model: mModel,
       type: mType,
       typeName: typeName,
@@ -299,9 +424,27 @@ export default function MachinesPage() {
       lastMovedBy: existing?.lastMovedBy,
       totalDowntimeMinutes: existing?.totalDowntimeMinutes || 0,
       ageYears: existing?.ageYears || 1.2,
-      specs: ASSET_SUBTYPE_LOOKUP[mType]?.specs || '',
+      specs: specs,
     };
-  }, [mId, mBrand, mModel, mType, mCost, mMotor, mLine, mStation, mDate, machines, selectedCategory]);
+  }, [
+    mId,
+    mBrand,
+    mModel,
+    mType,
+    mCost,
+    mMotor,
+    mLine,
+    mStation,
+    mDate,
+    machines,
+    selectedCategory,
+    isCustomBrand,
+    customBrandInput,
+    isCustomType,
+    customTypeName,
+    customSpecs,
+    customSubtypes,
+  ]);
 
   const handlePrint = () => {
     window.print();
@@ -310,12 +453,22 @@ export default function MachinesPage() {
   // Encoded QR payload feeding all asset specifications into the QR code
   const qrData = useMemo(() => {
     const base = `${origin}/scan/${encodeURIComponent(mId)}`;
+    const activeBrand =
+      isCustomBrand && customBrandInput.trim() ? customBrandInput.trim() : mBrand;
+    const activeTypeName =
+      isCustomType && customTypeName.trim()
+        ? customTypeName.trim()
+        : ASSET_SUBTYPE_LOOKUP[mType]?.name ||
+          customSubtypes.find((s) => s.id === mType)?.name ||
+          mType ||
+          '';
+
     const params = new URLSearchParams({
       id: mId || '',
-      brand: mBrand || '',
+      brand: activeBrand || '',
       model: mModel || '',
       type: mType || '',
-      typeName: ASSET_SUBTYPE_LOOKUP[mType]?.name || mType || '',
+      typeName: activeTypeName,
       category: selectedCategory || '',
       line: mLine || '',
       station: mStation || '',
@@ -324,7 +477,24 @@ export default function MachinesPage() {
       cost: mCost ? String(mCost) : '',
     });
     return `${base}?${params.toString()}`;
-  }, [origin, mId, mBrand, mModel, mType, selectedCategory, mLine, mStation, mMotor, mDate, mCost]);
+  }, [
+    origin,
+    mId,
+    mBrand,
+    mModel,
+    mType,
+    selectedCategory,
+    mLine,
+    mStation,
+    mMotor,
+    mDate,
+    mCost,
+    isCustomBrand,
+    customBrandInput,
+    isCustomType,
+    customTypeName,
+    customSubtypes,
+  ]);
 
   // Counts by category
   const categoryCounts = useMemo(() => {
@@ -444,48 +614,188 @@ export default function MachinesPage() {
               </div>
             </div>
 
-            {/* Subtype and Brand Selection */}
+            {/* Subtype and Brand Selection with Custom Entry Support */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Asset Variety / Subtype */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Asset Variety / Model Subtype *
-                </label>
-                <select
-                  required
-                  value={mType}
-                  onChange={(e) => handleSubtypeChange(e.target.value as MachineType)}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-slate-800 font-bold"
-                >
-                  {currentCategoryDef.subtypes.map((sub) => (
-                    <option key={sub.id} value={sub.id}>
-                      {sub.name}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-[10px] text-slate-500 mt-1 block leading-tight">
-                  {ASSET_SUBTYPE_LOOKUP[mType]?.specs || 'Standard industrial plant specification'}
-                </span>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-slate-600">
+                    Asset Variety / Model Subtype *
+                  </label>
+                  {!isCustomType ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSubtypeChange('__CUSTOM_TYPE__')}
+                      className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5 cursor-pointer"
+                      title="Add a custom variety or new seating/machine/table model"
+                    >
+                      <span>+ New Variety</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomType(false);
+                        handleSubtypeChange(currentCategoryDef.subtypes[0].id);
+                      }}
+                      className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 cursor-pointer"
+                    >
+                      Use Standard List
+                    </button>
+                  )}
+                </div>
+
+                {!isCustomType ? (
+                  <>
+                    <select
+                      required
+                      value={mType}
+                      onChange={(e) => handleSubtypeChange(e.target.value as MachineType)}
+                      className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-slate-800 font-bold"
+                    >
+                      <optgroup label={`Standard ${currentCategoryDef.singular} Models`}>
+                        {allSubtypesForCategory.map((sub) => (
+                          <option key={sub.id} value={sub.id}>
+                            {sub.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <option value="__CUSTOM_TYPE__" className="text-indigo-600 font-bold">
+                        ✨ + Add New / Custom {currentCategoryDef.singular} Type...
+                      </option>
+                    </select>
+                    <span className="text-[10px] text-slate-500 mt-1 block leading-tight">
+                      {ASSET_SUBTYPE_LOOKUP[mType]?.specs ||
+                        customSubtypes.find((s) => s.id === mType)?.specs ||
+                        'Standard industrial plant specification'}
+                    </span>
+                  </>
+                ) : (
+                  <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-indigo-900 mb-0.5">
+                        New Variety / Chair Model Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={customTypeName}
+                        onChange={(e) => setCustomTypeName(e.target.value)}
+                        placeholder={
+                          selectedCategory === 'CHAIR'
+                            ? 'e.g. Drafting Stool with Foot Ring'
+                            : selectedCategory === 'TABLE'
+                            ? 'e.g. Fabric Layout & Spreading Bench'
+                            : selectedCategory === 'UTILITY'
+                            ? 'e.g. Task Gooseneck LED 15W'
+                            : 'e.g. Multi-Needle Smocking Machine'
+                        }
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-indigo-300 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                        autoFocus
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-indigo-800 mb-0.5">
+                        Technical Specs &amp; Measurements
+                      </label>
+                      <input
+                        type="text"
+                        value={customSpecs}
+                        onChange={(e) => setCustomSpecs(e.target.value)}
+                        placeholder="e.g. 600-850mm pneumatic lift, chrome foot ring, ESD vinyl"
+                        className="w-full px-3 py-1.5 text-[11px] bg-white border border-indigo-200 rounded-lg text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
+              {/* Brand / Manufacturer OEM */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Brand / Manufacturer OEM *
-                </label>
-                <select
-                  required
-                  value={mBrand}
-                  onChange={(e) => setMBrand(e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-slate-800 font-bold"
-                >
-                  {availableBrands.map((b) => (
-                    <option key={b} value={b}>
-                      {b} OEM
-                    </option>
-                  ))}
-                </select>
-                <span className="text-[10px] text-slate-400 mt-1 block">
-                  Verified supplier for {currentCategoryDef.singular}
-                </span>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-slate-600">
+                    Brand / Manufacturer OEM *
+                  </label>
+                  {!isCustomBrand ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomBrand(true);
+                        setCustomBrandInput('');
+                      }}
+                      className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5 cursor-pointer"
+                      title="Enter a new supplier or custom brand name"
+                    >
+                      <span>+ New Brand</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomBrand(false);
+                        setMBrand(availableBrands[0] || 'Generic OEM');
+                      }}
+                      className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 cursor-pointer"
+                    >
+                      Use Brand List
+                    </button>
+                  )}
+                </div>
+
+                {!isCustomBrand ? (
+                  <>
+                    <select
+                      required
+                      value={mBrand}
+                      onChange={(e) => {
+                        if (e.target.value === '__CUSTOM_BRAND__') {
+                          setIsCustomBrand(true);
+                          setCustomBrandInput('');
+                        } else {
+                          setMBrand(e.target.value);
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-slate-800 font-bold"
+                    >
+                      <optgroup label="Available OEM Suppliers">
+                        {availableBrands.map((b) => (
+                          <option key={b} value={b}>
+                            {b} OEM
+                          </option>
+                        ))}
+                      </optgroup>
+                      <option value="__CUSTOM_BRAND__" className="text-indigo-600 font-bold">
+                        ✨ + Enter New / Custom Brand...
+                      </option>
+                    </select>
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      Verified supplier for {currentCategoryDef.singular}
+                    </span>
+                  </>
+                ) : (
+                  <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-indigo-900 mb-0.5">
+                        Enter Custom Brand / Manufacturer *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={customBrandInput}
+                        onChange={(e) => {
+                          setCustomBrandInput(e.target.value);
+                          setMBrand(e.target.value);
+                        }}
+                        placeholder="e.g. Steelcase, Godrej Interio, Local Fabrication"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-indigo-300 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                        autoFocus
+                      />
+                    </div>
+                    <span className="text-[10px] text-indigo-700 block">
+                      Will be saved and remembered for future asset registrations.
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 

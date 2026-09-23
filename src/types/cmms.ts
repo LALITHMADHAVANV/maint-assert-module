@@ -54,7 +54,12 @@ export type MachineType =
   // Utilities
   | 'UTILITY_BOILER' // Industrial Steam Generator
   | 'UTILITY_COMPRESSOR' // Screw Air Compressor
-  | 'UTILITY_SAFETY'; // Line Fire Safety Station
+  | 'UTILITY_SAFETY' // Line Fire Safety Station
+  // Custom Asset Extensions
+  | 'CHAIR_CUSTOM' // Custom Chair / Seating
+  | 'TABLE_CUSTOM' // Custom Table / Workstation
+  | 'UTILITY_CUSTOM' // Custom Utility Fixture
+  | (string & {}); // Extensible custom types
 
 export type MachineClass = 'OVERLOCK' | 'FLATLOCK' | 'SINGLE_NEEDLE';
 
