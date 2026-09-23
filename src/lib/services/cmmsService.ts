@@ -139,7 +139,7 @@ export function subscribeMachines(callback: (machines: Machine[]) => void): () =
 
     fetchAndNotify();
 
-    const channel = supabase.channel('schema-db-changes')
+    const channel = supabase.channel('machines-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'machines' }, (payload) => {
         fetchAndNotify();
       })
@@ -307,7 +307,7 @@ export function subscribeParts(callback: (parts: SparePart[]) => void): () => vo
 
     fetchAndNotify();
 
-    const channel = supabase.channel('schema-db-changes')
+    const channel = supabase.channel('spare-parts-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'spare_parts' }, (payload) => {
         fetchAndNotify();
       })
@@ -384,7 +384,7 @@ export function subscribeRepairs(callback: (repairs: RepairTicket[]) => void): (
 
     fetchAndNotify();
 
-    const channel = supabase.channel('schema-db-changes')
+    const channel = supabase.channel('repair-tickets-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'repair_tickets' }, (payload) => {
         fetchAndNotify();
       })
@@ -599,7 +599,7 @@ export function subscribePPMSchedules(callback: (schedules: PPMSchedule[]) => vo
 
     fetchAndNotify();
 
-    const channel = supabase.channel('schema-db-changes')
+    const channel = supabase.channel('ppm-schedules-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ppm_schedules' }, (payload) => {
         fetchAndNotify();
       })
@@ -713,7 +713,7 @@ export function subscribeRequisitions(
 
     fetchAndNotify();
 
-    const channel = supabase.channel('schema-db-changes')
+    const channel = supabase.channel('requisitions-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'requisitions' }, (payload) => {
         fetchAndNotify();
       })
