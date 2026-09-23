@@ -30,6 +30,7 @@ import {
   Trash2,
   ListPlus,
   Layers,
+  Lock,
 } from 'lucide-react';
 import {
   SparePart,
@@ -56,6 +57,10 @@ export default function InventoryPage() {
 
   const isStorePersonOrAdmin = role === 'STORE_PERSON' || role === 'ADMIN' || role === 'ASSET_MANAGER';
   const isMechanicOrAdmin = role === 'MECHANIC' || role === 'SENIOR_MECHANIC' || role === 'ADMIN' || role === 'ASSET_MANAGER';
+
+  // Strict authorization matrix: only authorized executives/admin can approve critical needs
+  const isAuthorizedToApproveCritical = role === 'CEO' || role === 'ADMIN' || role === 'ASSET_MANAGER';
+  const isAuthorizedToApproveGeneral = role === 'STORE_PERSON' || role === 'ADMIN' || role === 'ASSET_MANAGER' || role === 'CEO';
 
   const [parts, setParts] = useState<SparePart[]>([]);
   const [requisitions, setRequisitions] = useState<PartRequisition[]>([]);
@@ -394,9 +399,23 @@ export default function InventoryPage() {
   };
 
   const handleApprove = async (req: PartRequisition) => {
+    const isCritical = req.type === 'CRITICAL_CEO' || req.urgency === 'CRITICAL_CEO_APPROVAL' || req.requiresCeoApproval;
+
+    if (isCritical && !isAuthorizedToApproveCritical) {
+      showToast('Access Denied: Only authorized executives (CEO / Plant Admin) can approve critical tool requisitions.', 'error');
+      return;
+    }
+
+    if (!isCritical && !isAuthorizedToApproveGeneral) {
+      showToast('Access Denied: Mechanics cannot approve requisitions. Awaiting authorized store or admin approval.', 'error');
+      return;
+    }
+
     try {
-      if (req.type === 'CRITICAL_CEO') {
-        const approver = role === 'ASSET_MANAGER' ? 'V. Sundaram (Asset & Plant Head)' : 'Managing Director / CEO';
+      if (isCritical) {
+        const approver = role === 'CEO'
+          ? `${user?.name || 'Dr. K. Ramanathan'} (CEO)`
+          : `${user?.name || 'V. Sundaram'} (Plant Admin)`;
         await approveRequisition(
           req.id,
           approver,
@@ -405,7 +424,7 @@ export default function InventoryPage() {
         );
         showToast(`Critical Requisition #${req.id} authorized by ${approver}!`, 'success');
       } else {
-        const approver = user?.name ? `${user.name} (${user.title})` : 'Maintenance Manager';
+        const approver = user?.name ? `${user.name} (${user.title})` : 'Store In-Charge';
         await approveRequisition(
           req.id,
           approver,
@@ -421,11 +440,23 @@ export default function InventoryPage() {
   };
 
   const handleReject = async (id: string) => {
+    const targetReq = requisitions.find((r) => r.id === id);
+    const isCritical = targetReq?.type === 'CRITICAL_CEO' || targetReq?.urgency === 'CRITICAL_CEO_APPROVAL' || targetReq?.requiresCeoApproval;
+
+    if (isCritical && !isAuthorizedToApproveCritical) {
+      showToast('Access Denied: Only authorized executives can reject critical requisitions.', 'error');
+      return;
+    }
+    if (!isCritical && !isAuthorizedToApproveGeneral) {
+      showToast('Access Denied: Mechanics cannot reject requisitions.', 'error');
+      return;
+    }
+
     try {
       await rejectRequisition(
         id,
-        user?.name || 'Management Office',
-        'Deferred or rejected by maintenance supervisor.'
+        user?.name ? `${user.name} (${user.title})` : 'Authorized Approver',
+        'Deferred or rejected by authorized management.'
       );
       showToast(`Requisition #${id} marked as rejected.`, 'info');
     } catch (err) {
@@ -433,42 +464,6 @@ export default function InventoryPage() {
       console.error(err);
     }
   };
-
-  if (role === 'ADMIN' || role === 'ASSET_MANAGER') {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[65vh] text-center p-8 bg-white rounded-3xl border border-slate-200 shadow-sm max-w-2xl mx-auto space-y-5 my-8">
-        <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shadow-xs">
-          <ShieldAlert className="w-8 h-8" />
-        </div>
-        <div className="space-y-2">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
-            Role Restriction: Administrator
-          </span>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-            Spare Parts Management Restricted
-          </h2>
-          <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-            The Tool Crib &amp; Spare Parts inventory module is strictly maintained by <strong>M. Arumugam (Stores In-Charge)</strong> and factory mechanics. Plant Administrators focus on machine fleet registry, maintenance operations, and factory staff access.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
-          <Link
-            href="/dashboard/users"
-            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm"
-          >
-            <Users className="w-4 h-4" />
-            <span>Go to User Management</span>
-          </Link>
-          <Link
-            href="/dashboard/machines"
-            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition border border-slate-200"
-          >
-            <span>View Machine Fleet</span>
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -1108,32 +1103,58 @@ export default function InventoryPage() {
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleReject(req.id)}
-                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer"
-                          >
-                            Reject
-                          </button>
-
-                          {isCritical ? (
-                            <button
-                              onClick={() => handleApprove(req)}
-                              className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer urgent-pulse"
-                            >
-                              <ShieldAlert className="w-3.5 h-3.5" />
-                              <span>Authorize as CEO / Plant Head</span>
-                            </button>
+                        {/* Authorization Check: Only authorized personnel can approve */}
+                        {isCritical ? (
+                          isAuthorizedToApproveCritical ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleReject(req.id)}
+                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer"
+                              >
+                                Reject
+                              </button>
+                              <button
+                                onClick={() => handleApprove(req)}
+                                className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer urgent-pulse"
+                              >
+                                <ShieldAlert className="w-3.5 h-3.5" />
+                                <span>Authorize as CEO / Plant Head</span>
+                              </button>
+                            </div>
                           ) : (
-                            <button
-                              onClick={() => handleApprove(req)}
-                              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
-                            >
-                              <ShieldCheck className="w-3.5 h-3.5" />
-                              <span>Approve (Maintenance Manager)</span>
-                            </button>
-                          )}
-                        </div>
+                            <div className="flex items-center gap-2">
+                              <span className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1.5">
+                                <Lock className="w-3.5 h-3.5 text-rose-600" />
+                                <span>Approval Restricted: Awaiting Authorized Person (CEO / Plant Admin)</span>
+                              </span>
+                            </div>
+                          )
+                        ) : (
+                          isAuthorizedToApproveGeneral ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleReject(req.id)}
+                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer"
+                              >
+                                Reject
+                              </button>
+                              <button
+                                onClick={() => handleApprove(req)}
+                                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                              >
+                                <ShieldCheck className="w-3.5 h-3.5" />
+                                <span>Approve Requisition</span>
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1.5">
+                                <Lock className="w-3.5 h-3.5 text-slate-500" />
+                                <span>Approval Restricted: Awaiting Store In-Charge / Admin</span>
+                              </span>
+                            </div>
+                          )
+                        )}
                       </div>
                     )}
                   </div>
