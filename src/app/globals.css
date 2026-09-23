@@ -88,10 +88,14 @@ body {
   /* Dedicated Thermal QR Asset Tag Print Mode */
   #printable-qr-tag,
   .printable-qr-tag {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
     visibility: visible !important;
-    margin: 12px auto !important;
-    max-width: 420px !important;
+    margin: 24px auto !important;
+    max-width: 280px !important;
     width: 100% !important;
     border: 2px solid #000000 !important;
     background: #ffffff !important;
@@ -99,7 +103,8 @@ body {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     box-sizing: border-box !important;
-    padding: 16px !important;
+    padding: 20px !important;
+    border-radius: 16px !important;
   }
 
   /* Ensure QR code SVGs render razor-sharp and dark */

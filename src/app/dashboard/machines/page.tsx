@@ -269,8 +269,24 @@ export default function MachinesPage() {
     window.print();
   };
 
-  // Encoded URL for QR code
-  const qrUrl = `${origin}/scan/${encodeURIComponent(mId)}`;
+  // Encoded QR payload feeding all machine specifications into the QR
+  const qrData = useMemo(() => {
+    const base = `${origin}/scan/${encodeURIComponent(mId)}`;
+    const params = new URLSearchParams({
+      id: mId || '',
+      brand: mBrand || '',
+      model: mModel || '',
+      type: mType || '',
+      typeName: typeNameMap[mType] || '',
+      category: mCategoryGroup || '',
+      line: mLine || '',
+      station: mStation || '',
+      motor: mMotor || '',
+      date: mDate || '',
+      cost: mCost ? String(mCost) : '',
+    });
+    return `${base}?${params.toString()}`;
+  }, [origin, mId, mBrand, mModel, mType, typeNameMap, mCategoryGroup, mLine, mStation, mMotor, mDate, mCost]);
 
   // Filtered machines table
   const filteredMachines = useMemo(() => {
@@ -534,91 +550,43 @@ export default function MachinesPage() {
           </form>
         </div>
 
-        {/* Right 5 Columns: Printable QR Asset Tag Preview Card */}
+        {/* Right 5 Columns: Printable QR Machine Sticker Preview */}
         <div className="lg:col-span-5 space-y-4 print:w-full print:max-w-none print:m-0">
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4 print:border-none print:shadow-none print:p-0">
             <div className="flex items-center justify-between no-print">
               <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
                 <Tag className="w-4 h-4 text-indigo-600" />
-                <span>Asset QR Tag Preview</span>
+                <span>Machine QR Sticker Preview</span>
               </h3>
               <span className="text-[10px] bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded uppercase">
-                Standard Thermal Tag
+                Ready to Paste
               </span>
             </div>
 
-            {/* Printable Sticker Container */}
+            {/* Printable Sticker: Only QR and Asset ID */}
             <div
               id="printable-qr-tag"
-              className="bg-white border-2 border-slate-900 rounded-xl p-4 shadow-sm relative overflow-hidden"
+              className="bg-white border-2 border-slate-900 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center text-center mx-auto max-w-[280px] print:border-2 print:border-black print:rounded-none print:shadow-none print:p-4 print:m-auto"
             >
-              <div className="flex items-center justify-between border-b border-slate-300 pb-2 mb-3">
-                <div>
-                  <div className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                    TexTech Apparel Group
-                  </div>
-                  <div className="text-sm font-bold text-slate-900">FACTORY ASSET TAG</div>
-                </div>
-                <div className="text-right">
-                  <span className="px-2 py-0.5 text-[9px] font-bold bg-slate-900 text-white rounded">
-                    ACTIVE
-                  </span>
-                </div>
+              {/* High-Resolution QR Code containing all machine specifications */}
+              <div className="p-3 bg-white border-2 border-slate-900 rounded-xl flex items-center justify-center shadow-xs">
+                <QRCodeSVG
+                  value={qrData}
+                  size={180}
+                  level="H"
+                  bgColor="#ffffff"
+                  fgColor="#000000"
+                />
               </div>
 
-              <div className="flex items-center gap-4">
-                {/* QR Display Box */}
-                <div className="w-32 h-32 flex-shrink-0 bg-white p-2 border border-slate-300 rounded-lg flex items-center justify-center">
-                  <QRCodeSVG
-                    value={qrUrl}
-                    size={110}
-                    level="M"
-                    bgColor="#ffffff"
-                    fgColor="#0f172a"
-                  />
+              {/* Machine Asset ID */}
+              <div className="mt-3.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Asset ID
                 </div>
-
-                <div className="space-y-1 text-left flex-grow min-w-0">
-                  <div className="text-[10px] text-slate-500 font-semibold uppercase">Machine ID</div>
-                  <div className="text-base font-extrabold text-slate-900 font-mono tracking-tight truncate">
-                    {mId || 'MC-SNLS-101'}
-                  </div>
-
-                  <div className="text-[10px] text-slate-500 font-semibold uppercase mt-1">
-                    Make / Model
-                  </div>
-                  <div className="text-xs font-bold text-indigo-700 truncate">
-                    {mBrand.toUpperCase()} • {mModel}
-                  </div>
-
-                  <div className="text-[10px] text-slate-500 font-semibold uppercase mt-1">Class</div>
-                  <div className="text-xs text-slate-700 truncate font-medium">
-                    {typeNameMap[mType]}
-                  </div>
-
-                  <div className="text-[10px] text-slate-500 font-semibold uppercase mt-1">
-                    Current Assignment
-                  </div>
-                  <div className="text-xs font-semibold text-emerald-700 truncate">
-                    {mLine} • {mStation}
-                  </div>
+                <div className="text-lg font-black text-slate-950 font-mono tracking-wide">
+                  {mId || 'MC-SNLS-101'}
                 </div>
-              </div>
-
-              {/* Where Held Before tracking info on printed tag */}
-              {currentMachineObj.previousLine && (
-                <div className="mt-2.5 pt-1.5 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-700 bg-slate-50 px-2 py-1 rounded">
-                  <span className="font-semibold text-slate-500">Held Before:</span>
-                  <span className="font-bold text-slate-900">
-                    {currentMachineObj.previousLine} {currentMachineObj.previousStation ? `(${currentMachineObj.previousStation})` : ''}
-                  </span>
-                </div>
-              )}
-
-              <div className="mt-3 pt-2 border-t border-dashed border-slate-300 flex items-center justify-between text-[9px] text-slate-500 font-mono">
-                <span>Motor: {mMotor || 'SERVO'}</span>
-                <span>Valuation: ₹{mCost?.toLocaleString('en-IN') || '75,000'}</span>
-                <span>Reg: {mDate || new Date().toISOString().slice(0, 10)}</span>
               </div>
             </div>
 
@@ -628,23 +596,23 @@ export default function MachinesPage() {
                 type="button"
                 onClick={handlePrint}
                 className="w-full sm:flex-1 py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm"
-                title="Direct print thermal asset tag label"
+                title="Direct print QR sticker for machine"
               >
                 <Printer className="w-3.5 h-3.5" />
-                <span>Print Asset Tag</span>
+                <span>Print QR Sticker</span>
               </button>
               <button
                 type="button"
                 onClick={() => {
                   setPrintModalMachine(currentMachineObj);
-                  setPrintModalMode('DOCUMENT');
+                  setPrintModalMode('TAG');
                   setIsPrintModalOpen(true);
                 }}
                 className="w-full sm:flex-1 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm"
-                title="Inspect printable document layout & equipment passport"
+                title="Inspect printable sticker & batch sheet"
               >
                 <FileText className="w-3.5 h-3.5" />
-                <span>Document Preview</span>
+                <span>Print Options</span>
               </button>
               <button
                 type="button"

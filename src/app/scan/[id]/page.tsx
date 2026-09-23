@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Wrench,
@@ -28,6 +28,7 @@ import { useAuth } from '@/context/AuthContext';
 export default function MobileScanPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const machineId = typeof params?.id === 'string' ? decodeURIComponent(params.id) : '';
 
   const { showToast } = useToast();
@@ -55,11 +56,34 @@ export default function MobileScanPage() {
         setMachine(found);
         setTargetLine(found.currentLine);
         setTargetStation(found.stationNo);
+      } else if (searchParams && searchParams.get('brand')) {
+        // Fallback initialized directly from the machine data fed into QR payload
+        const fallbackMachine: Machine = {
+          id: machineId,
+          name: `${searchParams.get('brand') || ''} ${searchParams.get('model') || ''}`.trim() || machineId,
+          brand: searchParams.get('brand') || 'OEM',
+          model: searchParams.get('model') || 'Standard',
+          type: (searchParams.get('type') as any) || 'SNLS',
+          typeName: searchParams.get('typeName') || searchParams.get('type') || 'Sewing Machine',
+          currentLine: (searchParams.get('line') as FloorLine) || 'Line 01',
+          stationNo: searchParams.get('station') || 'Station 01',
+          motorType: (searchParams.get('motor') as any) || 'SERVO',
+          purchaseDate: searchParams.get('date') || new Date().toISOString().slice(0, 10),
+          cost: searchParams.get('cost') ? parseFloat(searchParams.get('cost')!) : 75000,
+          status: 'ACTIVE',
+          category: 'MACHINE',
+          department: 'Sewing Floor',
+          operator: 'Line Operator',
+          totalDowntimeMinutes: 0,
+        };
+        setMachine(fallbackMachine);
+        setTargetLine(fallbackMachine.currentLine);
+        setTargetStation(fallbackMachine.stationNo);
       }
       setIsLoading(false);
     });
     return () => unsub();
-  }, [machineId]);
+  }, [machineId, searchParams]);
 
   const handleBreakdownSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

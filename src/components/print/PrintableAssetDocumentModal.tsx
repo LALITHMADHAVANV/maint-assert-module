@@ -75,21 +75,30 @@ export function PrintableAssetDocumentModal({
   initialMode = 'TAG',
 }: PrintableAssetDocumentModalProps) {
   const [printMode, setPrintMode] = useState<'TAG' | 'DOCUMENT' | 'BATCH'>(initialMode);
-  const [origin, setOrigin] = useState('https://textech.factory');
+  const [origin] = useState(() => (typeof window !== 'undefined' ? window.location.origin : 'https://textech.factory'));
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setOrigin(window.location.origin);
-    }
-  }, []);
-
-  useEffect(() => {
+  // Sync mode if initialMode prop changes without effect setState
+  const [prevInitialMode, setPrevInitialMode] = useState(initialMode);
+  if (prevInitialMode !== initialMode) {
+    setPrevInitialMode(initialMode);
     setPrintMode(initialMode);
-  }, [initialMode]);
+  }
 
   if (!isOpen || !asset) return null;
 
-  const qrUrl = `${origin}/scan/${encodeURIComponent(asset.id)}`;
+  // Encoded QR payload feeding all machine specifications into the QR code
+  const qrData = `${origin}/scan/${encodeURIComponent(asset.id)}?${new URLSearchParams({
+    id: asset.id || '',
+    brand: asset.brand || '',
+    model: asset.model || '',
+    type: asset.type || '',
+    typeName: asset.typeName || TYPE_NAME_MAP[asset.type] || '',
+    line: asset.currentLine || '',
+    station: asset.stationNo || '',
+    motor: asset.motorType || '',
+    cost: asset.cost ? String(asset.cost) : '',
+    date: asset.purchaseDate || '',
+  }).toString()}`;
   const displayClass = asset.typeName || TYPE_NAME_MAP[asset.type] || asset.type;
   const valuation = asset.cost ? formatRupee(asset.cost) : '₹75,000';
   const regDate = asset.purchaseDate || '2023-01-01';
@@ -202,82 +211,27 @@ export function PrintableAssetDocumentModal({
           {printMode === 'TAG' && (
             <div
               id="printable-qr-tag"
-              className="bg-white border-2 border-slate-950 rounded-2xl p-5 shadow-lg w-full max-w-[420px] print:shadow-none print:border-2 print:border-black print:rounded-none print:m-0 print:max-w-[400px]"
+              className="bg-white border-2 border-slate-950 rounded-2xl p-6 shadow-lg flex flex-col items-center justify-center text-center mx-auto max-w-[280px] print:shadow-none print:border-2 print:border-black print:rounded-none print:m-auto print:max-w-[260px] print:p-4"
             >
-              {/* Sticker Header */}
-              <div className="flex items-center justify-between border-b-2 border-slate-950 pb-2 mb-3">
-                <div>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-700 flex items-center gap-1">
-                    <Building2 className="w-3 h-3 text-slate-900 inline" />
-                    <span>TexTech Apparel Group</span>
-                  </div>
-                  <div className="text-sm font-extrabold text-slate-950 tracking-tight">
-                    FACTORY ASSET TAG
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="px-2 py-0.5 text-[9px] font-black bg-slate-950 text-white rounded uppercase tracking-wider">
-                    {asset.status || 'ACTIVE'}
-                  </span>
-                </div>
+              {/* Sharp High-Contrast QR Code */}
+              <div className="p-3 bg-white border-2 border-slate-950 rounded-xl flex items-center justify-center shadow-xs">
+                <QRCodeSVG
+                  value={qrData}
+                  size={180}
+                  level="H"
+                  bgColor="#ffffff"
+                  fgColor="#000000"
+                />
               </div>
 
-              {/* QR and Specification Body */}
-              <div className="flex items-center gap-4">
-                {/* Sharp QR Code */}
-                <div className="w-32 h-32 flex-shrink-0 bg-white p-2 border-2 border-slate-950 rounded-xl flex items-center justify-center">
-                  <QRCodeSVG
-                    value={qrUrl}
-                    size={110}
-                    level="H"
-                    bgColor="#ffffff"
-                    fgColor="#000000"
-                  />
+              {/* Machine Asset Identifier */}
+              <div className="mt-3.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Asset ID
                 </div>
-
-                <div className="space-y-1 text-left flex-grow min-w-0">
-                  <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Asset ID</div>
-                  <div className="text-base font-black text-slate-950 font-mono tracking-tight truncate">
-                    {asset.id}
-                  </div>
-
-                  <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">Make / Model</div>
-                  <div className="text-xs font-bold text-slate-900 truncate">
-                    {asset.brand.toUpperCase()} &bull; {asset.model}
-                  </div>
-
-                  <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">Class</div>
-                  <div className="text-xs text-slate-800 truncate font-semibold">
-                    {displayClass}
-                  </div>
-
-                  <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">Current Station</div>
-                  <div className="text-xs font-bold text-slate-950 truncate">
-                    {asset.currentLine} &bull; {asset.stationNo}
-                  </div>
+                <div className="text-lg font-black text-slate-950 font-mono tracking-wide">
+                  {asset.id}
                 </div>
-              </div>
-
-              {/* Location Tracking Strip on Sticker */}
-              {asset.previousLine && (
-                <div className="mt-3 pt-2 border-t border-slate-300 flex items-center justify-between text-[10px] text-slate-700 bg-slate-50 px-2 py-1 rounded">
-                  <span className="font-semibold text-slate-500">Held Before:</span>
-                  <span className="font-bold text-slate-900">
-                    {asset.previousLine} {asset.previousStation ? `(${asset.previousStation})` : ''}
-                  </span>
-                </div>
-              )}
-
-              {/* Valuation & Motor Metadata */}
-              <div className="mt-2.5 pt-2 border-t border-dashed border-slate-400 flex items-center justify-between text-[9px] font-mono text-slate-700">
-                <span>Motor: {asset.motorType || 'SERVO'}</span>
-                <span>Valuation: {valuation}</span>
-                <span>Reg: {regDate}</span>
-              </div>
-
-              {/* Footer Instruction */}
-              <div className="mt-2 text-center text-[8px] uppercase tracking-wider font-bold text-slate-500">
-                Scan with phone or shop terminal for breakdown &amp; relocation
               </div>
             </div>
           )}
@@ -319,7 +273,7 @@ export function PrintableAssetDocumentModal({
                 <div className="sm:col-span-3 flex flex-col items-center justify-center border-b sm:border-b-0 sm:border-r border-slate-200 pb-3 sm:pb-0 sm:pr-4">
                   <div className="p-2 bg-white border-2 border-slate-900 rounded-xl">
                     <QRCodeSVG
-                      value={qrUrl}
+                      value={qrData}
                       size={105}
                       level="H"
                       bgColor="#ffffff"
@@ -521,60 +475,38 @@ export function PrintableAssetDocumentModal({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 print:grid-cols-2 print:gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 print:grid-cols-3 print:gap-3">
                 {batchList.map((m) => {
-                  const mQr = `${origin}/scan/${encodeURIComponent(m.id)}`;
-                  const mTypeStr = m.typeName || TYPE_NAME_MAP[m.type] || m.type;
-                  const mVal = m.cost ? formatRupee(m.cost) : '₹75,000';
+                  const mParams = new URLSearchParams({
+                    id: m.id || '',
+                    brand: m.brand || '',
+                    model: m.model || '',
+                    type: m.type || '',
+                    typeName: m.typeName || TYPE_NAME_MAP[m.type] || '',
+                    line: m.currentLine || '',
+                    station: m.stationNo || '',
+                    motor: m.motorType || '',
+                    cost: m.cost ? String(m.cost) : '',
+                    date: m.purchaseDate || '',
+                  });
+                  const mQr = `${origin}/scan/${encodeURIComponent(m.id)}?${mParams.toString()}`;
 
                   return (
                     <div
                       key={m.id}
-                      className="border-2 border-slate-900 rounded-xl p-3.5 bg-white space-y-2 print-break-inside-avoid"
+                      className="border-2 border-slate-900 rounded-xl p-4 bg-white flex flex-col items-center justify-center text-center space-y-2 print-break-inside-avoid"
                     >
-                      <div className="flex items-center justify-between border-b border-slate-400 pb-1.5 text-[9px] font-black uppercase">
-                        <span>TexTech Asset Tag</span>
-                        <span className="bg-slate-900 text-white px-1.5 py-0.2 rounded font-mono">
-                          {m.status || 'ACTIVE'}
-                        </span>
+                      <div className="p-2 bg-white border border-slate-900 rounded-lg flex items-center justify-center">
+                        <QRCodeSVG
+                          value={mQr}
+                          size={110}
+                          level="H"
+                          bgColor="#ffffff"
+                          fgColor="#000000"
+                        />
                       </div>
-
-                      <div className="flex items-center gap-3">
-                        <div className="w-20 h-20 flex-shrink-0 bg-white p-1 border border-slate-400 rounded flex items-center justify-center">
-                          <QRCodeSVG
-                            value={mQr}
-                            size={72}
-                            level="M"
-                            bgColor="#ffffff"
-                            fgColor="#000000"
-                          />
-                        </div>
-
-                        <div className="space-y-0.5 text-left flex-grow min-w-0 text-[11px]">
-                          <div className="font-mono font-black text-slate-950 text-xs truncate">
-                            {m.id}
-                          </div>
-                          <div className="font-bold text-slate-800 truncate text-[10px]">
-                            {m.brand} &bull; {m.model}
-                          </div>
-                          <div className="text-slate-600 truncate text-[10px]">
-                            {mTypeStr}
-                          </div>
-                          <div className="font-semibold text-slate-950 truncate text-[10px]">
-                            {m.currentLine} &bull; {m.stationNo}
-                          </div>
-                          {m.previousLine && (
-                            <div className="text-[9px] text-slate-500 truncate">
-                              Prev: {m.previousLine}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="pt-1 border-t border-dashed border-slate-300 flex justify-between text-[8px] font-mono text-slate-500">
-                        <span>{m.motorType || 'SERVO'}</span>
-                        <span>{mVal}</span>
-                        <span>/scan/{m.id}</span>
+                      <div className="font-mono font-black text-slate-950 text-xs">
+                        {m.id}
                       </div>
                     </div>
                   );
